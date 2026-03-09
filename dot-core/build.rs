@@ -49,6 +49,7 @@ fn main() {
 
     // Plugins are built but not installed by cmake install, so we need
     // to add search paths for each plugin and internal library directory.
+    // These paths match the Graphviz 12.2.1 build structure.
     let search_subdirs = &[
         "plugin/core",
         "plugin/dot_layout",
@@ -119,10 +120,14 @@ fn main() {
         println!("cargo:rustc-link-lib=static={}", lib);
     }
 
-    // System libraries available on macOS
+    // System libraries
     println!("cargo:rustc-link-lib=expat");
     println!("cargo:rustc-link-lib=z");
+
+    #[cfg(target_os = "macos")]
     println!("cargo:rustc-link-lib=c++");
+    #[cfg(not(target_os = "macos"))]
+    println!("cargo:rustc-link-lib=stdc++");
 
     // Generate Rust bindings from the C headers
     let include_dir = dst.join("include");
