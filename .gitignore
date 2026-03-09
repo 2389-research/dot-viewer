@@ -1,0 +1,2 @@
+# Vendored Graphviz source (too large to commit, fetch with build script)
+dot-core/graphviz-vendor/

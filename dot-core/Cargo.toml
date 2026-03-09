@@ -17,6 +17,10 @@ uniffi = { version = "0.30", features = ["cli"] }
 name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
+[build-dependencies]
+cmake = "0.1"
+bindgen = "0.71"
+
 [profile.release]
 lto = "fat"
 panic = "abort"
