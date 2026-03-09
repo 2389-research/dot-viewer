@@ -5,7 +5,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let dotFile: UTType = UTType(filenameExtension: "dot") ?? .plainText
+    // macOS maps .dot to com.microsoft.word.dot (Word template), so we must
+    // include that type to allow opening .dot files from the file picker.
+    static let msWordDot: UTType = UTType("com.microsoft.word.dot") ?? .data
     static let gvFile: UTType = UTType(filenameExtension: "gv") ?? .plainText
 }
 
@@ -14,7 +16,7 @@ final class DotDocument: ReferenceFileDocument {
 
     @Published var text: String
 
-    static var readableContentTypes: [UTType] { [.dotFile, .gvFile, .plainText] }
+    static var readableContentTypes: [UTType] { [.msWordDot, .gvFile, .plainText] }
     static var writableContentTypes: [UTType] { [.plainText] }
 
     init(text: String = "digraph {\n    a -> b\n    b -> c\n}") {
