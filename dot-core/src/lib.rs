@@ -39,5 +39,5 @@ pub fn render_dot(_dot_source: String, _engine: LayoutEngine) -> Result<String, 
 
 #[uniffi::export]
 pub fn validate_dot(_dot_source: String) -> Result<(), DotError> {
-    Err(DotError::RenderError { message: "not yet implemented".to_string() })
+    Err(DotError::SyntaxError { message: "not yet implemented".to_string(), line: 0, column: 0 })
 }
