@@ -1,0 +1,23 @@
+# ABOUTME: Cargo manifest for the dot-core Rust library.
+# ABOUTME: Defines dependencies (UniFFI) and build settings for the shared core.
+
+[package]
+name = "dot-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "staticlib"]
+name = "dot_core"
+
+[dependencies]
+uniffi = { version = "0.30", features = ["cli"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[profile.release]
+lto = "fat"
+panic = "abort"
+strip = true
