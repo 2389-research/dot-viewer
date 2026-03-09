@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<!-- ABOUTME: Minimal HTML shell for displaying SVG output from Graphviz rendering. -->
-<!-- ABOUTME: Supports zoom/pan and receives SVG updates via JavaScript injection. -->
+<!-- ABOUTME: HTML shell for displaying SVG output from Graphviz rendering. -->
+<!-- ABOUTME: Supports mouse wheel zoom, click-drag panning, and fit-to-view reset. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -8,21 +8,22 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
         background: #1e1e1e;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        overflow: auto;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        cursor: grab;
+    }
+    body.dragging { cursor: grabbing; }
+    #viewport {
+        transform-origin: 0 0;
+        position: absolute;
     }
     #container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
+        display: inline-block;
+        padding: 40px;
     }
     #container svg {
-        max-width: 100%;
-        height: auto;
+        display: block;
     }
     #error {
         color: #ff6b6b;
@@ -31,23 +32,159 @@
         padding: 20px;
         white-space: pre-wrap;
         display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(30, 30, 30, 0.9);
+    }
+    #zoom-info {
+        position: fixed;
+        bottom: 8px;
+        right: 8px;
+        color: rgba(255, 255, 255, 0.4);
+        font-family: -apple-system, sans-serif;
+        font-size: 11px;
+        pointer-events: none;
     }
 </style>
 </head>
 <body>
-    <div id="container"></div>
+    <div id="viewport">
+        <div id="container"></div>
+    </div>
     <div id="error"></div>
+    <div id="zoom-info"></div>
     <script>
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartTranslateX = 0;
+        let dragStartTranslateY = 0;
+
+        const viewport = document.getElementById('viewport');
+        const zoomInfo = document.getElementById('zoom-info');
+
+        function applyTransform() {
+            viewport.style.transform =
+                `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            zoomInfo.textContent = `${Math.round(scale * 100)}%`;
+        }
+
+        function fitToView() {
+            const container = document.getElementById('container');
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            const svgRect = svg.getBoundingClientRect();
+            const bodyW = window.innerWidth;
+            const bodyH = window.innerHeight;
+
+            // Calculate scale to fit with padding
+            const padding = 40;
+            const scaleX = (bodyW - padding * 2) / (svgRect.width / scale);
+            const scaleY = (bodyH - padding * 2) / (svgRect.height / scale);
+            scale = Math.min(scaleX, scaleY, 2); // cap at 200%
+
+            // Center the content
+            const contentW = (svgRect.width / (svgRect.width / (svgRect.width / scale))) * scale;
+            const contentH = (svgRect.height / (svgRect.height / (svgRect.height / scale))) * scale;
+
+            // Simpler: reset and measure
+            const rawW = svg.getBBox().width + 80; // padding
+            const rawH = svg.getBBox().height + 80;
+            translateX = (bodyW - rawW * scale) / 2;
+            translateY = (bodyH - rawH * scale) / 2;
+
+            applyTransform();
+        }
+
+        // Zoom with scroll wheel
+        document.addEventListener('wheel', function(e) {
+            e.preventDefault();
+
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.max(0.05, Math.min(10, scale * zoomFactor));
+
+            // Zoom toward mouse position
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            translateX = mouseX - (mouseX - translateX) * (newScale / scale);
+            translateY = mouseY - (mouseY - translateY) * (newScale / scale);
+            scale = newScale;
+
+            applyTransform();
+        }, { passive: false });
+
+        // Pan with mouse drag
+        document.addEventListener('mousedown', function(e) {
+            if (e.button !== 0) return;
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            dragStartTranslateX = translateX;
+            dragStartTranslateY = translateY;
+            document.body.classList.add('dragging');
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            translateX = dragStartTranslateX + (e.clientX - dragStartX);
+            translateY = dragStartTranslateY + (e.clientY - dragStartY);
+            applyTransform();
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+            document.body.classList.remove('dragging');
+        });
+
+        // Double-click to fit to view
+        document.addEventListener('dblclick', function() {
+            fitToView();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === '0' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                scale = 1;
+                translateX = 0;
+                translateY = 0;
+                applyTransform();
+                setTimeout(fitToView, 10);
+            }
+        });
+
         function updateSVG(svgString) {
             const container = document.getElementById('container');
             const error = document.getElementById('error');
             container.innerHTML = svgString;
-            container.style.display = 'flex';
+            container.style.display = 'inline-block';
             error.style.display = 'none';
+
+            // Remove fixed dimensions from SVG so it scales naturally
+            const svg = container.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                // Use viewBox for sizing if available, otherwise set a reasonable size
+                if (!svg.getAttribute('viewBox')) {
+                    const bbox = svg.getBBox();
+                    svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                }
+                svg.style.width = svg.viewBox.baseVal.width + 'px';
+                svg.style.height = svg.viewBox.baseVal.height + 'px';
+            }
+
+            // Fit to view on new content
+            setTimeout(fitToView, 10);
         }
 
         function showError(message) {
-            const container = document.getElementById('container');
             const error = document.getElementById('error');
             error.textContent = message;
             error.style.display = 'block';
