@@ -62,7 +62,9 @@ pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, 
             });
         }
 
-        // Register static plugins since LTDL is disabled
+        // Register static plugins since LTDL is disabled.
+        // SAFETY: gvAddLibrary only reads from the plugin library structs, so the
+        // const-to-mut cast is safe despite the C API's mutable pointer signature.
         gvAddLibrary(gvc, &gvplugin_dot_layout_LTX_library as *const _ as *mut _);
         gvAddLibrary(gvc, &gvplugin_neato_layout_LTX_library as *const _ as *mut _);
         gvAddLibrary(gvc, &gvplugin_core_LTX_library as *const _ as *mut _);
@@ -109,6 +111,8 @@ pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, 
             .to_string_lossy()
             .into_owned();
 
+        // result_ptr is allocated by the Graphviz C library's internal allocator
+        // and must be freed with gvFreeRenderData (not libc::free or Rust's allocator).
         gvFreeRenderData(result_ptr);
         gvFreeLayout(gvc, graph);
         agclose(graph);
