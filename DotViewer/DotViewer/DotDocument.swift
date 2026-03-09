@@ -5,10 +5,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let dotFile = UTType(exportedAs: "com.2389.dot-viewer.dot",
-                                conformingTo: .plainText)
-    static let gvFile = UTType(exportedAs: "com.2389.dot-viewer.gv",
-                                conformingTo: .plainText)
+    static let dotFile: UTType = UTType(filenameExtension: "dot") ?? .plainText
+    static let gvFile: UTType = UTType(filenameExtension: "gv") ?? .plainText
 }
 
 final class DotDocument: ReferenceFileDocument {
@@ -17,7 +15,7 @@ final class DotDocument: ReferenceFileDocument {
     @Published var text: String
 
     static var readableContentTypes: [UTType] { [.dotFile, .gvFile, .plainText] }
-    static var writableContentTypes: [UTType] { [.dotFile, .gvFile, .plainText] }
+    static var writableContentTypes: [UTType] { [.plainText] }
 
     init(text: String = "digraph {\n    a -> b\n    b -> c\n}") {
         self.text = text
