@@ -1,6 +1,8 @@
 // ABOUTME: Public API for the dot-core library, exposed to Swift via UniFFI.
 // ABOUTME: Provides DOT parsing, validation, and SVG rendering via Graphviz.
 
+mod graphviz;
+
 uniffi::setup_scaffolding!();
 
 #[derive(uniffi::Enum)]
@@ -33,11 +35,43 @@ impl std::fmt::Display for DotError {
 }
 
 #[uniffi::export]
-pub fn render_dot(_dot_source: String, _engine: LayoutEngine) -> Result<String, DotError> {
-    Err(DotError::RenderError { message: "not yet implemented".to_string() })
+pub fn render_dot(dot_source: String, engine: LayoutEngine) -> Result<String, DotError> {
+    graphviz::render_to_svg(&dot_source, &engine)
 }
 
 #[uniffi::export]
-pub fn validate_dot(_dot_source: String) -> Result<(), DotError> {
-    Err(DotError::SyntaxError { message: "not yet implemented".to_string(), line: 0, column: 0 })
+pub fn validate_dot(dot_source: String) -> Result<(), DotError> {
+    graphviz::validate_syntax(&dot_source)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_render_simple_graph() {
+        let dot = "digraph { a -> b }".to_string();
+        let svg = render_dot(dot, LayoutEngine::Dot).unwrap();
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("</svg>"));
+    }
+
+    #[test]
+    fn test_render_invalid_dot() {
+        let dot = "not a valid dot string {{{".to_string();
+        let result = render_dot(dot, LayoutEngine::Dot);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_valid_dot() {
+        let dot = "digraph { a -> b }".to_string();
+        assert!(validate_dot(dot).is_ok());
+    }
+
+    #[test]
+    fn test_validate_invalid_dot() {
+        let dot = "not valid {{{".to_string();
+        assert!(validate_dot(dot).is_err());
+    }
 }
