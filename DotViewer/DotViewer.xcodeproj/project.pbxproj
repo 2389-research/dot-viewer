@@ -8,17 +8,21 @@
 
 /* Begin PBXBuildFile section */
 		8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 610092B008C5F5407DB15BEC /* dot_core.swift */; };
+		AD4D0F0BC961B7802FBB1470 /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */; };
 		B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17029AAFFE34185C8E1079AF /* DotViewerApp.swift */; };
 		B75805BDCD421288D6F9A029 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DD8AA3B76DA86ED232C5CB /* ContentView.swift */; };
 		BA2F30ADCC9BE11B62944B56 /* DotDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FDD87B960FFD7A03A370FE /* DotDocument.swift */; };
+		D8EA87C3CBDDCF2D595C6616 /* preview.html in Resources */ = {isa = PBXBuildFile; fileRef = 5C735ED554FD6439F388259D /* preview.html */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		05BD6CCBDA9F08D08D624B36 /* DotViewer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DotViewer.entitlements; sourceTree = "<group>"; };
+		0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 		115233C6967E9047239A70DE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		17029AAFFE34185C8E1079AF /* DotViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotViewerApp.swift; sourceTree = "<group>"; };
 		20DD8AA3B76DA86ED232C5CB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		49FDD87B960FFD7A03A370FE /* DotDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotDocument.swift; sourceTree = "<group>"; };
+		5C735ED554FD6439F388259D /* preview.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = preview.html; sourceTree = "<group>"; };
 		6034454B20B7F806316D882D /* DotViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DotViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		610092B008C5F5407DB15BEC /* dot_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dot_core.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -56,9 +60,19 @@
 				05BD6CCBDA9F08D08D624B36 /* DotViewer.entitlements */,
 				17029AAFFE34185C8E1079AF /* DotViewerApp.swift */,
 				115233C6967E9047239A70DE /* Info.plist */,
+				0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */,
 				6FA81482CF858C76597FA1D2 /* Generated */,
+				DFC9C952F186574884B95DCD /* Resources */,
 			);
 			path = DotViewer;
+			sourceTree = "<group>";
+		};
+		DFC9C952F186574884B95DCD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				5C735ED554FD6439F388259D /* preview.html */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -69,6 +83,7 @@
 			buildConfigurationList = 55E218C9C5532EE4F0D77BDE /* Build configuration list for PBXNativeTarget "DotViewer" */;
 			buildPhases = (
 				E2269E245EEB056EDE50EF13 /* Sources */,
+				4EA46A804A6F74D454E127A1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -114,6 +129,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		4EA46A804A6F74D454E127A1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D8EA87C3CBDDCF2D595C6616 /* preview.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		E2269E245EEB056EDE50EF13 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -122,6 +148,7 @@
 				B75805BDCD421288D6F9A029 /* ContentView.swift in Sources */,
 				BA2F30ADCC9BE11B62944B56 /* DotDocument.swift in Sources */,
 				B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */,
+				AD4D0F0BC961B7802FBB1470 /* PreviewView.swift in Sources */,
 				8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
