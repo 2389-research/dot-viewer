@@ -13,13 +13,29 @@ struct ContentView: View {
 
     var body: some View {
         HSplitView {
-            EditorView(text: $document.text)
-                .frame(minWidth: 300)
-                .onChange(of: document.text) {
-                    if liveMode {
-                        scheduleRender()
+            VStack(spacing: 0) {
+                EditorView(text: $document.text)
+                    .onChange(of: document.text) {
+                        if liveMode {
+                            scheduleRender()
+                        }
                     }
+
+                if let errorMessage {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(errorMessage)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(.red)
+                            .lineLimit(2)
+                        Spacer()
+                    }
+                    .padding(8)
+                    .background(Color.red.opacity(0.1))
                 }
+            }
+            .frame(minWidth: 300)
 
             PreviewView(svgContent: svgOutput, errorMessage: errorMessage)
                 .frame(minWidth: 300)
