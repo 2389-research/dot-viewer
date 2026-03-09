@@ -1,0 +1,348 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 610092B008C5F5407DB15BEC /* dot_core.swift */; };
+		B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17029AAFFE34185C8E1079AF /* DotViewerApp.swift */; };
+		B75805BDCD421288D6F9A029 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DD8AA3B76DA86ED232C5CB /* ContentView.swift */; };
+		BA2F30ADCC9BE11B62944B56 /* DotDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FDD87B960FFD7A03A370FE /* DotDocument.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		05BD6CCBDA9F08D08D624B36 /* DotViewer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DotViewer.entitlements; sourceTree = "<group>"; };
+		115233C6967E9047239A70DE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		17029AAFFE34185C8E1079AF /* DotViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotViewerApp.swift; sourceTree = "<group>"; };
+		20DD8AA3B76DA86ED232C5CB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		49FDD87B960FFD7A03A370FE /* DotDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotDocument.swift; sourceTree = "<group>"; };
+		6034454B20B7F806316D882D /* DotViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DotViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		610092B008C5F5407DB15BEC /* dot_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dot_core.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		339CCF9ACAB98E12AB9016A5 = {
+			isa = PBXGroup;
+			children = (
+				937ACA15996099912275F1BE /* DotViewer */,
+				55987C54393B7A11F10BABB4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		55987C54393B7A11F10BABB4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6034454B20B7F806316D882D /* DotViewer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6FA81482CF858C76597FA1D2 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				610092B008C5F5407DB15BEC /* dot_core.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		937ACA15996099912275F1BE /* DotViewer */ = {
+			isa = PBXGroup;
+			children = (
+				20DD8AA3B76DA86ED232C5CB /* ContentView.swift */,
+				49FDD87B960FFD7A03A370FE /* DotDocument.swift */,
+				05BD6CCBDA9F08D08D624B36 /* DotViewer.entitlements */,
+				17029AAFFE34185C8E1079AF /* DotViewerApp.swift */,
+				115233C6967E9047239A70DE /* Info.plist */,
+				6FA81482CF858C76597FA1D2 /* Generated */,
+			);
+			path = DotViewer;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1B8AD5135C74548CDF047D8D /* DotViewer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 55E218C9C5532EE4F0D77BDE /* Build configuration list for PBXNativeTarget "DotViewer" */;
+			buildPhases = (
+				E2269E245EEB056EDE50EF13 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DotViewer;
+			packageProductDependencies = (
+			);
+			productName = DotViewer;
+			productReference = 6034454B20B7F806316D882D /* DotViewer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1E76A941B2CF7A720AA09FD9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					1B8AD5135C74548CDF047D8D = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 814C199F32C15182DAED9BC2 /* Build configuration list for PBXProject "DotViewer" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 339CCF9ACAB98E12AB9016A5;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 55987C54393B7A11F10BABB4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1B8AD5135C74548CDF047D8D /* DotViewer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E2269E245EEB056EDE50EF13 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B75805BDCD421288D6F9A029 /* ContentView.swift in Sources */,
+				BA2F30ADCC9BE11B62944B56 /* DotDocument.swift in Sources */,
+				B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */,
+				8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C77B0280E48E6AF74809C546 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DB6A79782B686BA12ED989DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E68EF56784C8DD42239FA896 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = DotViewer/DotViewer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				INFOPLIST_FILE = DotViewer/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/../dot-core/target/release",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				OTHER_LDFLAGS = (
+					"-ldot_core",
+					"-lexpat",
+					"-lz",
+					"-lc++",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.2389.dot-viewer";
+				PRODUCT_NAME = "Dot Viewer";
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		FCEE32ED173319CAB2D3DBB1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = DotViewer/DotViewer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				INFOPLIST_FILE = DotViewer/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/../dot-core/target/debug",
+					"$(PROJECT_DIR)/../dot-core/target/release",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				OTHER_LDFLAGS = (
+					"-ldot_core",
+					"-lexpat",
+					"-lz",
+					"-lc++",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.2389.dot-viewer";
+				PRODUCT_NAME = "Dot Viewer";
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		55E218C9C5532EE4F0D77BDE /* Build configuration list for PBXNativeTarget "DotViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FCEE32ED173319CAB2D3DBB1 /* Debug */,
+				E68EF56784C8DD42239FA896 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		814C199F32C15182DAED9BC2 /* Build configuration list for PBXProject "DotViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C77B0280E48E6AF74809C546 /* Debug */,
+				DB6A79782B686BA12ED989DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1E76A941B2CF7A720AA09FD9 /* Project object */;
+}

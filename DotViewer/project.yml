@@ -1,0 +1,48 @@
+# ABOUTME: XcodeGen project specification for the DotViewer macOS app.
+# ABOUTME: Configures build settings, linking to the Rust static library, and UTI declarations.
+
+name: DotViewer
+options:
+  bundleIdPrefix: com.2389
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+targets:
+  DotViewer:
+    type: application
+    platform: macOS
+    sources:
+      - path: DotViewer
+        excludes:
+          - "Generated/include/**"
+          - "Generated/dot_coreFFI.h"
+          - "Generated/dot_coreFFI.modulemap"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.2389.dot-viewer
+        PRODUCT_NAME: "Dot Viewer"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.10"
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: "DotViewer/Info.plist"
+        CODE_SIGN_ENTITLEMENTS: "DotViewer/DotViewer.entitlements"
+        CODE_SIGN_STYLE: "Automatic"
+        OTHER_LDFLAGS:
+          - "-ldot_core"
+          - "-lexpat"
+          - "-lz"
+          - "-lc++"
+        LIBRARY_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/../dot-core/target/release"
+        SWIFT_INCLUDE_PATHS:
+          - "$(PROJECT_DIR)/DotViewer/Generated/include"
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/DotViewer/Generated/include"
+      configs:
+        Debug:
+          LIBRARY_SEARCH_PATHS:
+            - "$(PROJECT_DIR)/../dot-core/target/debug"
+            - "$(PROJECT_DIR)/../dot-core/target/release"
+    entitlements:
+      path: DotViewer/DotViewer.entitlements
