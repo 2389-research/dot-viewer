@@ -39,10 +39,7 @@ targets:
           - "$(PROJECT_DIR)/DotViewer/Generated/include"
         HEADER_SEARCH_PATHS:
           - "$(PROJECT_DIR)/DotViewer/Generated/include"
-      configs:
-        Debug:
-          LIBRARY_SEARCH_PATHS:
-            - "$(PROJECT_DIR)/../dot-core/target/debug"
-            - "$(PROJECT_DIR)/../dot-core/target/release"
+      # Always link the release Rust library to match the generated UniFFI bindings.
+      # The bindings contain checksums that must match the linked library exactly.
     entitlements:
       path: DotViewer/DotViewer.entitlements

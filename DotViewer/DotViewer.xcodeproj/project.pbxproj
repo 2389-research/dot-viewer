@@ -332,7 +332,6 @@
 					"@executable_path/../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/../dot-core/target/debug",
 					"$(PROJECT_DIR)/../dot-core/target/release",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
