@@ -13,8 +13,7 @@ struct ContentView: View {
 
     var body: some View {
         HSplitView {
-            TextEditor(text: $document.text)
-                .font(.system(.body, design: .monospaced))
+            EditorView(text: $document.text)
                 .frame(minWidth: 300)
                 .onChange(of: document.text) {
                     if liveMode {
