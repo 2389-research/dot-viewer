@@ -2,6 +2,8 @@
 
 A native macOS app for viewing and editing [Graphviz](https://graphviz.org/) `.dot` and `.gv` files with a split-pane interface and live SVG preview.
 
+![Dot Viewer — split-pane editor with live SVG preview](docs/images/screenshot.png)
+
 ## Download
 
 Grab the latest release from the [Releases page](https://github.com/2389-research/dot-viewer/releases). The DMG is code signed and notarized with Developer ID — just drag to Applications and launch.
