@@ -8,6 +8,10 @@ options:
     macOS: "14.0"
   xcodeVersion: "16.0"
   createIntermediateGroups: true
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.0
 targets:
   DotViewer:
     type: application
@@ -18,6 +22,8 @@ targets:
           - "Generated/include/**"
           - "Generated/dot_coreFFI.h"
           - "Generated/dot_coreFFI.modulemap"
+    dependencies:
+      - package: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.2389.dot-viewer
@@ -30,6 +36,7 @@ targets:
         CODE_SIGN_STYLE: "Automatic"
         DEFINES_MODULE: true
         PRODUCT_MODULE_NAME: "DotViewer"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         OTHER_LDFLAGS:
           - "-ldot_core"
           - "-lexpat"
@@ -41,6 +48,10 @@ targets:
           - "$(PROJECT_DIR)/DotViewer/Generated/include"
         HEADER_SEARCH_PATHS:
           - "$(PROJECT_DIR)/DotViewer/Generated/include"
+        SPARKLE_FEED_URL: ""
+        SPARKLE_PUBLIC_ED_KEY: ""
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
       # Always link the release Rust library to match the generated UniFFI bindings.
       # The bindings contain checksums that must match the linked library exactly.
     entitlements:

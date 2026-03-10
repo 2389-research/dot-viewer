@@ -1,0 +1,343 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    env:
+      APP_NAME: "Dot Viewer"
+      APP_BUNDLE_NAME: "Dot Viewer.app"
+      PROJECT_DIR: DotViewer
+      PROJECT_FILE: DotViewer.xcodeproj
+      SCHEME: DotViewer
+      SPARKLE_FEED_URL: https://github.com/${{ github.repository }}/releases/latest/download/appcast.xml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tools
+        run: brew install xcodegen bison flex create-dmg
+
+      - name: Clone Graphviz Vendor Source
+        run: |
+          cd dot-core
+          git clone --depth 1 --branch 12.2.1 https://gitlab.com/graphviz/graphviz.git graphviz-vendor
+
+      - name: Build Rust Core and Generate Bindings
+        run: |
+          set -euo pipefail
+          bash scripts/generate-bindings.sh
+          echo "Rust core built and Swift bindings generated"
+
+      - name: Setup Signing Keychain
+        env:
+          DEVELOPER_ID_APPLICATION_CERT_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_CERT_BASE64 }}
+          DEVELOPER_ID_APPLICATION_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/developer-id-application.p12"
+
+          echo "$DEVELOPER_ID_APPLICATION_CERT_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$RUNNER_TEMP" "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$RUNNER_TEMP" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" \
+            -P "$DEVELOPER_ID_APPLICATION_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$RUNNER_TEMP" "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+      - name: Generate Xcode Project
+        run: |
+          cd "$PROJECT_DIR"
+          xcodegen generate
+
+      - name: Resolve SPM Dependencies
+        run: |
+          cd "$PROJECT_DIR"
+          xcodebuild -project "$PROJECT_FILE" \
+            -scheme "$SCHEME" \
+            -resolvePackageDependencies
+
+      - name: Build Release App
+        id: build
+        env:
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
+
+          cd "$PROJECT_DIR"
+          xcodebuild \
+            -project "$PROJECT_FILE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            SPARKLE_FEED_URL="$SPARKLE_FEED_URL" \
+            SPARKLE_PUBLIC_ED_KEY="$SPARKLE_PUBLIC_ED_KEY" \
+            clean build
+
+          APP_PATH="build/DerivedData/Build/Products/Release/$APP_BUNDLE_NAME"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "App bundle not found at: $APP_PATH"
+            find build/DerivedData -name "*.app" -type d
+            exit 1
+          fi
+
+          BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist")"
+          echo "Built version: $BUILT_VERSION (expected: $VERSION)"
+
+          if [ "$BUILT_VERSION" != "$VERSION" ]; then
+            echo "Version mismatch: expected $VERSION got $BUILT_VERSION"
+            exit 1
+          fi
+
+          echo "app_path=$PROJECT_DIR/$APP_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Codesign App Bundle
+        env:
+          DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+
+          APP_PATH="${{ steps.build.outputs.app_path }}"
+          SIGN_IDENTITY="$DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY"
+
+          sign_path() {
+            local path="$1"
+            if [ -e "$path" ]; then
+              codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$path"
+            fi
+          }
+
+          # Sign frameworks and their contents (inside-out by path depth)
+          if [ -d "$APP_PATH/Contents/Frameworks" ]; then
+            # Sign all executables deepest-first
+            while IFS= read -r executable; do
+              sign_path "$executable"
+            done < <(
+              find "$APP_PATH/Contents/Frameworks" \
+                -type f -perm -111 -print \
+                | awk '{ print length($0) " " $0 }' \
+                | sort -rn \
+                | cut -d' ' -f2-
+            )
+
+            # Sign framework/bundle/xpc containers deepest-first
+            while IFS= read -r component; do
+              sign_path "$component"
+            done < <(
+              find "$APP_PATH/Contents/Frameworks" \
+                \( -name "*.framework" -o -name "*.dylib" -o -name "*.xpc" -o -name "*.bundle" -o -name "*.app" \) \
+                -print \
+                | awk '{ print length($0) " " $0 }' \
+                | sort -rn \
+                | cut -d' ' -f2-
+            )
+          fi
+
+          # Sign main executable then app bundle
+          sign_path "$APP_PATH/Contents/MacOS/DotViewer"
+          sign_path "$APP_PATH"
+
+          # Verify
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          spctl --assess --type execute --verbose "$APP_PATH" || true
+
+      - name: Notarize App
+        id: notarize
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP_PATH="${{ steps.build.outputs.app_path }}"
+          ARTIFACTS_DIR="${{ github.workspace }}/dist"
+          mkdir -p "$ARTIFACTS_DIR"
+
+          # Write API key
+          API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          echo "$API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+
+          # Create zip for notarization submission
+          NOTARY_ZIP="$RUNNER_TEMP/notary.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$NOTARY_ZIP"
+
+          # Submit for notarization
+          SUBMISSION_OUTPUT="$RUNNER_TEMP/notary-submit.json"
+          xcrun notarytool submit "$NOTARY_ZIP" \
+            --key "$API_KEY_PATH" \
+            --key-id "$API_KEY_ID" \
+            --issuer "$API_ISSUER_ID" \
+            --wait \
+            --output-format json > "$SUBMISSION_OUTPUT"
+
+          STATUS="$(python3 -c 'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("status", ""))' "$SUBMISSION_OUTPUT")"
+          SUBMISSION_ID="$(python3 -c 'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("id", ""))' "$SUBMISSION_OUTPUT")"
+
+          echo "Notary status: $STATUS (submission: $SUBMISSION_ID)"
+
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "Notarization failed. Fetching log..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --key "$API_KEY_PATH" \
+              --key-id "$API_KEY_ID" \
+              --issuer "$API_ISSUER_ID" || true
+            rm "$API_KEY_PATH"
+            exit 1
+          fi
+
+          # Staple
+          xcrun stapler staple "$APP_PATH"
+          rm "$API_KEY_PATH"
+
+          # Create distributable ZIP (for Sparkle)
+          APP_ZIP="$ARTIFACTS_DIR/DotViewer-${VERSION}-macOS.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$APP_ZIP"
+
+          echo "app_zip=$APP_ZIP" >> "$GITHUB_OUTPUT"
+          echo "artifacts_dir=$ARTIFACTS_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Create DMG
+        id: dmg
+        env:
+          DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP_PATH="${{ steps.build.outputs.app_path }}"
+          ARTIFACTS_DIR="${{ steps.notarize.outputs.artifacts_dir }}"
+          APP_DMG="$ARTIFACTS_DIR/DotViewer-${VERSION}-macOS.dmg"
+
+          # Stage the app in a directory for create-dmg
+          DMG_STAGING="$RUNNER_TEMP/dmg-staging"
+          mkdir -p "$DMG_STAGING"
+          cp -R "$APP_PATH" "$DMG_STAGING/"
+
+          # Build create-dmg arguments
+          DMG_ARGS=(
+            --volname "Dot Viewer"
+            --window-pos 200 120
+            --window-size 660 400
+            --icon-size 160
+            --icon "Dot Viewer.app" 180 170
+            --hide-extension "Dot Viewer.app"
+            --app-drop-link 480 170
+            --codesign "$DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY"
+          )
+
+          # Use app icon as volume icon if it exists
+          ICNS_PATH="$APP_PATH/Contents/Resources/AppIcon.icns"
+          if [ -f "$ICNS_PATH" ]; then
+            DMG_ARGS+=(--volicon "$ICNS_PATH")
+          fi
+
+          # create-dmg returns exit code 2 when no background image is provided
+          create-dmg "${DMG_ARGS[@]}" "$APP_DMG" "$DMG_STAGING" || test $? -eq 2
+
+          echo "app_dmg=$APP_DMG" >> "$GITHUB_OUTPUT"
+
+      - name: Build Sparkle Appcast Tool
+        run: |
+          set -euo pipefail
+
+          SPARKLE_SOURCE="$RUNNER_TEMP/Sparkle"
+          SPARKLE_BUILD="$RUNNER_TEMP/sparkle-build"
+
+          git clone --depth 1 https://github.com/sparkle-project/Sparkle.git "$SPARKLE_SOURCE"
+          xcodebuild \
+            -project "$SPARKLE_SOURCE/Sparkle.xcodeproj" \
+            -scheme generate_appcast \
+            -configuration Release \
+            -derivedDataPath "$SPARKLE_BUILD" \
+            build
+
+      - name: Generate Sparkle Appcast
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          set -euo pipefail
+
+          SPARKLE_BUILD="$RUNNER_TEMP/sparkle-build"
+          GENERATE_APPCAST="$SPARKLE_BUILD/Build/Products/Release/generate_appcast"
+          ARTIFACTS_DIR="${{ steps.notarize.outputs.artifacts_dir }}"
+          APPCAST_DIR="$RUNNER_TEMP/appcast"
+          ED_KEY_FILE="$RUNNER_TEMP/sparkle-private-key"
+
+          mkdir -p "$APPCAST_DIR"
+          cp "${{ steps.notarize.outputs.app_zip }}" "$APPCAST_DIR/"
+          printf '%s' "$SPARKLE_PRIVATE_ED_KEY" > "$ED_KEY_FILE"
+
+          "$GENERATE_APPCAST" "$APPCAST_DIR" \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            --ed-key-file "$ED_KEY_FILE"
+
+          cp "$APPCAST_DIR/appcast.xml" "$ARTIFACTS_DIR/appcast.xml"
+          rm "$ED_KEY_FILE"
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.notarize.outputs.app_zip }}
+            ${{ steps.dmg.outputs.app_dmg }}
+            ${{ steps.notarize.outputs.artifacts_dir }}/appcast.xml
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            1. Download `DotViewer-*-macOS.dmg`
+            2. Open the DMG file
+            3. Drag Dot Viewer to Applications folder
+            4. Launch the app normally
+
+            ## Requirements
+
+            - macOS 14.0 or later
+
+            ---
+
+            **Note:** This build is code signed and notarized with Developer ID.
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dot-viewer-${{ github.ref_name }}
+          path: |
+            ${{ steps.notarize.outputs.app_zip }}
+            ${{ steps.dmg.outputs.app_dmg }}
+            ${{ steps.notarize.outputs.artifacts_dir }}/appcast.xml
+
+      - name: Cleanup Keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
