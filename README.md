@@ -17,13 +17,13 @@ Dot Viewer is a native macOS application that enables users to view and edit Gra
 ## How to Use
 ### Prerequisites
 - macOS 14.0 or later
-- Xcode (version 16.0 or later)
+- Xcode 16.0 or later
 - Homebrew installed on your macOS for dependencies
 
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/harperreed/dot-viewer.git
+   git clone https://github.com/2389-research/dot-viewer.git
    cd dot-viewer
    ```
 
@@ -39,7 +39,7 @@ Dot Viewer is a native macOS application that enables users to view and edit Gra
 
 4. Build the app:
    ```bash
-   make build
+   make
    ```
 
 5. Open the project in Xcode:
@@ -80,7 +80,8 @@ xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=ma
   ├── DotViewer/                   # SwiftUI macOS app source
   ├── Makefile                     # Builds and manages the project
   ├── scripts/                     # Helper scripts
-  └── .gitignore                   # Files to ignore in git
+  ├── .gitignore                   # Files to ignore in git
+  └── README.md                    # This file
   ```
 
 For detailed setup, workflow, and implementation notes, check the [documentation files](./docs) in this repository. If you encounter any issues, please raise them in the Issues section of this repository or create a pull request with your suggestions for improvements.
