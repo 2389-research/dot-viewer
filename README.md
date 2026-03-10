@@ -1,89 +1,98 @@
-# Dot Viewer 📊
+# Dot Viewer
 
-## Summary of Project
-Dot Viewer is a native macOS application that enables users to view and edit Graphviz `.dot` files, featuring a split-pane interface with a text editor on the left and a live SVG preview on the right. The app supports tabbed multi-file editing using the native macOS window tabs, providing a seamless experience for users working with graphical representations.
+A native macOS app for viewing and editing [Graphviz](https://graphviz.org/) `.dot` and `.gv` files with a split-pane interface and live SVG preview.
 
-**Notable Features:**
-- **Live SVG Preview:** Automatically render and display changes as you edit.
-- **Bidirectional Linking:** Click a node in the preview to jump to its definition in the editor; place your cursor on a node to highlight it in the preview.
-- **Line Numbers:** Gutter with dynamic-width line numbers, current line highlighting, and click-to-select.
-- **Syntax Highlighting:** Visual cues for DOT keywords, strings, comments, attributes, and arrow operators.
-- **Bracket Matching:** Matching brackets are highlighted as you navigate the code.
-- **Multiple Layout Engines:** Switch between dot, neato, fdp, circo, twopi, and sfdp.
-- **Undo/Redo Support:** Easily revert changes with built-in undo functionality.
-- **Auto-Updates:** Securely packaged for distribution via Sparkle.
-- **Tabbed Editing:** Open multiple `.dot` files as tabs in a single window.
+![Dot Viewer — split-pane editor with live SVG preview](docs/images/screenshot.png)
 
-## How to Use
+## Download
+
+Grab the latest release from the [Releases page](https://github.com/2389-research/dot-viewer/releases). The DMG is code signed and notarized with Developer ID — just drag to Applications and launch.
+
+Requires **macOS 14.0** or later. The app checks for updates automatically via Sparkle.
+
+## Features
+
+- **Live preview** — edits render to SVG in real time with debounced updates (300ms)
+- **Multiple layout engines** — dot, neato, fdp, circo, twopi, sfdp selectable from the toolbar
+- **Bidirectional navigation** — click a node in the preview to jump to its definition in the editor, and vice versa
+- **Line numbers** — gutter with dynamic-width line numbers, current line highlighting, and click-to-select
+- **Syntax highlighting** — visual cues for DOT keywords, strings, comments, attributes, and arrow operators
+- **Bracket matching** — matching brackets are highlighted as you navigate the code
+- **Tabbed editing** — open multiple `.dot`/`.gv` files as native macOS window tabs
+- **Zoom and pan** — navigate large graphs in the SVG preview
+- **Undo/redo** — standard document undo support
+- **Error display** — inline error bar shows Graphviz rendering errors
+
+## Architecture
+
+Three-layer design:
+
+1. **dot-core** (Rust) — wraps Graphviz (cgraph + gvc) via C FFI, exposes a clean API through [UniFFI](https://mozilla.github.io/uniffi-rs/) bindings
+2. **UniFFI bridge** — auto-generates Swift bindings from the compiled Rust static library
+3. **DotViewer** (SwiftUI) — split-pane editor + preview, file handling, tabbed windows
+
+Graphviz 12.2.1 is compiled from source as a static library — no system Graphviz installation required.
+
+## Building from Source
+
 ### Prerequisites
-- macOS 14.0 or later
-- Xcode 16.0 or later
-- Homebrew installed on your macOS for dependencies
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/2389-research/dot-viewer.git
-   cd dot-viewer
-   ```
+- macOS 14.0+
+- Xcode 16.0+
+- Rust toolchain (`rustup`)
+- Homebrew
 
-2. Ensure you have the required packages by running:
-   ```bash
-   brew install xcodegen bison flex
-   ```
+### Steps
 
-3. Clone the Graphviz source (vendored dependency):
-   ```bash
-   cd dot-core && git clone --depth 1 --branch 12.2.1 https://gitlab.com/graphviz/graphviz.git graphviz-vendor && cd ..
-   ```
+```bash
+git clone https://github.com/2389-research/dot-viewer.git
+cd dot-viewer
 
-4. Build the app:
-   ```bash
-   make
-   ```
+# Install build tools
+brew install xcodegen bison flex
 
-5. Open the project in Xcode:
-   ```bash
-   open DotViewer/DotViewer.xcodeproj
-   ```
+# Clone Graphviz source (built by Cargo via CMake)
+cd dot-core
+git clone --depth 1 --branch 12.2.1 https://gitlab.com/graphviz/graphviz.git graphviz-vendor
+cd ..
 
-6. Run the app through Xcode to launch the Dot Viewer.
+# Build everything (Rust core + Swift bindings + Xcode app)
+make
+```
+
+To open in Xcode after building:
+
+```bash
+cd DotViewer && xcodegen generate
+open DotViewer.xcodeproj
+```
 
 ### Running Tests
+
 ```bash
-# Unit tests (DotParser logic)
+# Unit tests (DotParser logic — 29 tests)
 xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=macOS' -only-testing:DotViewerTests
 
-# UI scenario tests (requires macOS automation permission)
+# UI scenario tests (7 tests, requires macOS automation permission)
 xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=macOS' -only-testing:DotViewerUITests
 ```
 
-### Usage
-- Open or create a `.dot` file through the app.
-- Use the editor on the left side to modify the DOT input.
-- The right side will automatically reflect changes as a live SVG.
-- Use the toolbar for toggling live editing, selecting layout engines, and refreshing the preview.
+## Project Structure
 
-## Tech Info
-- **Tech Stack:** 
-  - Rust for the core processing 🔧
-  - SwiftUI for the user interface 🌟
-  - Graphviz for rendering graphs 🎭
-  - GitHub Actions for CI/CD workflow 🤖
+```
+.github/workflows/    GitHub Actions release pipeline
+dot-core/             Rust library (Graphviz FFI + UniFFI bindings)
+  build.rs            CMake build orchestration for vendored Graphviz
+  src/                Rust source
+DotViewer/            SwiftUI macOS app
+  project.yml         XcodeGen spec
+  DotViewer/          App source (views, document model, Sparkle updater)
+  DotViewerTests/     Unit tests (DotParser)
+  DotViewerUITests/   UI scenario tests
+scripts/              Build and release helper scripts
+Makefile              Top-level build orchestration
+```
 
-- **Directory Structure:**
-  ```plaintext
-  .
-  ├── .github/                     # GitHub workflows
-  ├── docs/                        # Documentation files
-  ├── dot-core/                    # Rust core library
-  ├── DotViewer/                   # SwiftUI macOS app source
-  ├── Makefile                     # Builds and manages the project
-  ├── scripts/                     # Helper scripts
-  ├── .gitignore                   # Files to ignore in git
-  └── README.md                    # This file
-  ```
+## Releases
 
-For detailed setup, workflow, and implementation notes, check the [documentation files](./docs) in this repository. If you encounter any issues, please raise them in the Issues section of this repository or create a pull request with your suggestions for improvements.
-
-**Let's view the world of graphs! 🌍**
+Releases are automated via GitHub Actions. Pushing a `v*` tag triggers the full pipeline: Rust build, Swift build, Developer ID signing, Apple notarization, DMG packaging, Sparkle appcast generation, and GitHub Release creation.
