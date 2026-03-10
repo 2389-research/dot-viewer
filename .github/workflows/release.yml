@@ -245,8 +245,16 @@ jobs:
 
           # create-dmg returns exit code 2 when it can't set a background (no background image provided)
           # This is expected and not an error
+          # Use app icon as volume icon if it exists
+          VOLICON_FLAG=""
+          ICNS_PATH="$APP_PATH/Contents/Resources/AppIcon.icns"
+          if [ -f "$ICNS_PATH" ]; then
+            VOLICON_FLAG="--volicon $ICNS_PATH"
+          fi
+
           create-dmg \
             --volname "Dot Viewer" \
+            $VOLICON_FLAG \
             --window-pos 200 120 \
             --window-size 660 400 \
             --icon-size 160 \

@@ -34,6 +34,7 @@ targets:
         INFOPLIST_FILE: "DotViewer/Info.plist"
         CODE_SIGN_ENTITLEMENTS: "DotViewer/DotViewer.entitlements"
         CODE_SIGN_STYLE: "Automatic"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         OTHER_LDFLAGS:
           - "-ldot_core"
           - "-lexpat"
