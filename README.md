@@ -5,10 +5,14 @@ Dot Viewer is a native macOS application that enables users to view and edit Gra
 
 **Notable Features:**
 - **Live SVG Preview:** Automatically render and display changes as you edit.
-- **Syntax Highlighting:** Enhanced editing experience with visual cues for DOT language syntax.
+- **Bidirectional Linking:** Click a node in the preview to jump to its definition in the editor; place your cursor on a node to highlight it in the preview.
+- **Line Numbers:** Gutter with dynamic-width line numbers, current line highlighting, and click-to-select.
+- **Syntax Highlighting:** Visual cues for DOT keywords, strings, comments, attributes, and arrow operators.
+- **Bracket Matching:** Matching brackets are highlighted as you navigate the code.
+- **Multiple Layout Engines:** Switch between dot, neato, fdp, circo, twopi, and sfdp.
 - **Undo/Redo Support:** Easily revert changes with built-in undo functionality.
-- **Code Signing & Notarization:** The app is securely packaged for distribution via Sparkle, ensuring users can install updates effortlessly.
-- **Intuitive Interface:** Splitting the UI between code and visual output to facilitate understanding and editing of graph structures.
+- **Auto-Updates:** Securely packaged for distribution via Sparkle.
+- **Tabbed Editing:** Open multiple `.dot` files as tabs in a single window.
 
 ## How to Use
 ### Prerequisites
@@ -28,17 +32,31 @@ Dot Viewer is a native macOS application that enables users to view and edit Gra
    brew install xcodegen bison flex
    ```
 
-3. Build the app:
+3. Clone the Graphviz source (vendored dependency):
+   ```bash
+   cd dot-core && git clone --depth 1 --branch 12.2.1 https://gitlab.com/graphviz/graphviz.git graphviz-vendor && cd ..
+   ```
+
+4. Build the app:
    ```bash
    make build
    ```
 
-4. Open the project in Xcode:
+5. Open the project in Xcode:
    ```bash
    open DotViewer/DotViewer.xcodeproj
    ```
 
-5. Run the app through Xcode to launch the Dot Viewer.
+6. Run the app through Xcode to launch the Dot Viewer.
+
+### Running Tests
+```bash
+# Unit tests (DotParser logic)
+xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=macOS' -only-testing:DotViewerTests
+
+# UI scenario tests (requires macOS automation permission)
+xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=macOS' -only-testing:DotViewerUITests
+```
 
 ### Usage
 - Open or create a `.dot` file through the app.
