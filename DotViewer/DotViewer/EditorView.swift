@@ -21,7 +21,9 @@ struct EditorView: NSViewRepresentable {
     @Binding var cursorNodeId: String?
     let navigator: EditorNavigator
 
-    func makeNSView(context: Context) -> NSScrollView {
+    func makeNSView(context: Context) -> NSView {
+        let container = NSView()
+
         let scrollView = NSTextView.scrollableTextView()
         let textView = scrollView.documentView as! NSTextView
 
@@ -47,11 +49,38 @@ struct EditorView: NSViewRepresentable {
         navigator.coordinator = context.coordinator
         navigator.textView = textView
 
-        return scrollView
+        // Line number gutter — sits beside the scroll view, never touches it
+        let gutter = LineNumberGutterView(textView: textView, scrollView: scrollView)
+
+        container.addSubview(gutter)
+        container.addSubview(scrollView)
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        gutter.translatesAutoresizingMaskIntoConstraints = false
+
+        let gutterWidthConstraint = gutter.widthAnchor.constraint(equalToConstant: gutter.requiredWidth)
+        context.coordinator.gutterWidthConstraint = gutterWidthConstraint
+        context.coordinator.gutterView = gutter
+        context.coordinator.scrollView = scrollView
+
+        NSLayoutConstraint.activate([
+            gutter.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            gutter.topAnchor.constraint(equalTo: container.topAnchor),
+            gutter.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            gutterWidthConstraint,
+
+            scrollView.leadingAnchor.constraint(equalTo: gutter.trailingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        let textView = scrollView.documentView as! NSTextView
+    func updateNSView(_ container: NSView, context: Context) {
+        guard let scrollView = context.coordinator.scrollView,
+              let textView = scrollView.documentView as? NSTextView else { return }
         if textView.string != text {
             textView.string = text
             context.coordinator.dotGraph = DotParser.parse(text)
@@ -71,6 +100,9 @@ struct EditorView: NSViewRepresentable {
         private var isAutoClosing = false
         private var isProcessingSelectionChange = false
         fileprivate var dotGraph: DotGraph?
+        var gutterWidthConstraint: NSLayoutConstraint?
+        weak var gutterView: LineNumberGutterView?
+        weak var scrollView: NSScrollView?
 
         private let keywords = [
             "digraph", "graph", "subgraph", "node", "edge", "strict"
@@ -103,6 +135,14 @@ struct EditorView: NSViewRepresentable {
             text.wrappedValue = textView.string
             dotGraph = DotParser.parse(textView.string)
             applyHighlighting(to: textView)
+
+            // Update gutter width if line count changed digit count
+            if let gutter = gutterView, let constraint = gutterWidthConstraint {
+                let newWidth = gutter.requiredWidth
+                if abs(constraint.constant - newWidth) > 0.5 {
+                    constraint.constant = newWidth
+                }
+            }
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {

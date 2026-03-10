@@ -7,9 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		167237630AFC3CC04E5CA58E /* DotViewerScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DD05CE1DC196599050E66E /* DotViewerScenarioTests.swift */; };
+		2EEEE0D62E1E454E2FB53D02 /* DotParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03296B3A0E482CCF2138E67E /* DotParserTests.swift */; };
 		30FAEA41AEAFF3F97316F982 /* DotParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5283D996DF9640711DC39C54 /* DotParser.swift */; };
 		812308620F5AAA97BABC21BC /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3145AC3BE69E00937548BD /* EditorView.swift */; };
 		8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 610092B008C5F5407DB15BEC /* dot_core.swift */; };
+		9B14FA32660F3F7593DD70E4 /* LineNumberGutterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40A1A429E1CAB1A1E1C32E0 /* LineNumberGutterView.swift */; };
 		AD4D0F0BC961B7802FBB1470 /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */; };
 		B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17029AAFFE34185C8E1079AF /* DotViewerApp.swift */; };
 		B75805BDCD421288D6F9A029 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DD8AA3B76DA86ED232C5CB /* ContentView.swift */; };
@@ -17,18 +20,40 @@
 		D8EA87C3CBDDCF2D595C6616 /* preview.html in Resources */ = {isa = PBXBuildFile; fileRef = 5C735ED554FD6439F388259D /* preview.html */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		79802270F34C7812FD06412F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1E76A941B2CF7A720AA09FD9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1B8AD5135C74548CDF047D8D;
+			remoteInfo = DotViewer;
+		};
+		CA643824AE6FEDB9DF98FDF6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1E76A941B2CF7A720AA09FD9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1B8AD5135C74548CDF047D8D;
+			remoteInfo = DotViewer;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		03296B3A0E482CCF2138E67E /* DotParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotParserTests.swift; sourceTree = "<group>"; };
 		05BD6CCBDA9F08D08D624B36 /* DotViewer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DotViewer.entitlements; sourceTree = "<group>"; };
 		0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 		115233C6967E9047239A70DE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		17029AAFFE34185C8E1079AF /* DotViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotViewerApp.swift; sourceTree = "<group>"; };
 		20DD8AA3B76DA86ED232C5CB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		21587102D518166A2F7AD8DB /* DotViewerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DotViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49FDD87B960FFD7A03A370FE /* DotDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotDocument.swift; sourceTree = "<group>"; };
 		5283D996DF9640711DC39C54 /* DotParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotParser.swift; sourceTree = "<group>"; };
 		5C735ED554FD6439F388259D /* preview.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = preview.html; sourceTree = "<group>"; };
 		6034454B20B7F806316D882D /* DotViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DotViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		610092B008C5F5407DB15BEC /* dot_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dot_core.swift; sourceTree = "<group>"; };
 		6F3145AC3BE69E00937548BD /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		B40A1A429E1CAB1A1E1C32E0 /* LineNumberGutterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberGutterView.swift; sourceTree = "<group>"; };
+		E5238B261D91896F0E908178 /* DotViewerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DotViewerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F7DD05CE1DC196599050E66E /* DotViewerScenarioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotViewerScenarioTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -36,14 +61,26 @@
 			isa = PBXGroup;
 			children = (
 				937ACA15996099912275F1BE /* DotViewer */,
+				D9A86737D7113498CFCD7965 /* DotViewerTests */,
+				33F71B24FB2EF8321A5B9D8B /* DotViewerUITests */,
 				55987C54393B7A11F10BABB4 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		33F71B24FB2EF8321A5B9D8B /* DotViewerUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F7DD05CE1DC196599050E66E /* DotViewerScenarioTests.swift */,
+			);
+			path = DotViewerUITests;
 			sourceTree = "<group>";
 		};
 		55987C54393B7A11F10BABB4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				6034454B20B7F806316D882D /* DotViewer.app */,
+				21587102D518166A2F7AD8DB /* DotViewerTests.xctest */,
+				E5238B261D91896F0E908178 /* DotViewerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,11 +103,20 @@
 				17029AAFFE34185C8E1079AF /* DotViewerApp.swift */,
 				6F3145AC3BE69E00937548BD /* EditorView.swift */,
 				115233C6967E9047239A70DE /* Info.plist */,
+				B40A1A429E1CAB1A1E1C32E0 /* LineNumberGutterView.swift */,
 				0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */,
 				6FA81482CF858C76597FA1D2 /* Generated */,
 				DFC9C952F186574884B95DCD /* Resources */,
 			);
 			path = DotViewer;
+			sourceTree = "<group>";
+		};
+		D9A86737D7113498CFCD7965 /* DotViewerTests */ = {
+			isa = PBXGroup;
+			children = (
+				03296B3A0E482CCF2138E67E /* DotParserTests.swift */,
+			);
+			path = DotViewerTests;
 			sourceTree = "<group>";
 		};
 		DFC9C952F186574884B95DCD /* Resources */ = {
@@ -102,6 +148,42 @@
 			productReference = 6034454B20B7F806316D882D /* DotViewer.app */;
 			productType = "com.apple.product-type.application";
 		};
+		3AA586E46079EEFE365512A9 /* DotViewerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 112A248639A1255BB8AF3F9F /* Build configuration list for PBXNativeTarget "DotViewerUITests" */;
+			buildPhases = (
+				BBE2C28D31A4881901B30BF3 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2E7E58C66B6B555E7699A7B7 /* PBXTargetDependency */,
+			);
+			name = DotViewerUITests;
+			packageProductDependencies = (
+			);
+			productName = DotViewerUITests;
+			productReference = E5238B261D91896F0E908178 /* DotViewerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		69129DEACB7E0BD94A0285FC /* DotViewerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 129774828F2D467B8CB34215 /* Build configuration list for PBXNativeTarget "DotViewerTests" */;
+			buildPhases = (
+				9BA105E0DD3068B9D91E9C61 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8043750D8DED638A0A129C0E /* PBXTargetDependency */,
+			);
+			name = DotViewerTests;
+			packageProductDependencies = (
+			);
+			productName = DotViewerTests;
+			productReference = 21587102D518166A2F7AD8DB /* DotViewerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -113,6 +195,9 @@
 				TargetAttributes = {
 					1B8AD5135C74548CDF047D8D = {
 						ProvisioningStyle = Automatic;
+					};
+					3AA586E46079EEFE365512A9 = {
+						TestTargetID = 1B8AD5135C74548CDF047D8D;
 					};
 				};
 			};
@@ -131,6 +216,8 @@
 			projectRoot = "";
 			targets = (
 				1B8AD5135C74548CDF047D8D /* DotViewer */,
+				69129DEACB7E0BD94A0285FC /* DotViewerTests */,
+				3AA586E46079EEFE365512A9 /* DotViewerUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -147,6 +234,22 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9BA105E0DD3068B9D91E9C61 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2EEEE0D62E1E454E2FB53D02 /* DotParserTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBE2C28D31A4881901B30BF3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				167237630AFC3CC04E5CA58E /* DotViewerScenarioTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E2269E245EEB056EDE50EF13 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -156,6 +259,7 @@
 				30FAEA41AEAFF3F97316F982 /* DotParser.swift in Sources */,
 				B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */,
 				812308620F5AAA97BABC21BC /* EditorView.swift in Sources */,
+				9B14FA32660F3F7593DD70E4 /* LineNumberGutterView.swift in Sources */,
 				AD4D0F0BC961B7802FBB1470 /* PreviewView.swift in Sources */,
 				8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */,
 			);
@@ -163,7 +267,108 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		2E7E58C66B6B555E7699A7B7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1B8AD5135C74548CDF047D8D /* DotViewer */;
+			targetProxy = CA643824AE6FEDB9DF98FDF6 /* PBXContainerItemProxy */;
+		};
+		8043750D8DED638A0A129C0E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1B8AD5135C74548CDF047D8D /* DotViewer */;
+			targetProxy = 79802270F34C7812FD06412F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		1D15CBD64A2891C953EAA282 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.2389.DotViewerUITests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.10;
+				TEST_TARGET_NAME = DotViewer;
+			};
+			name = Debug;
+		};
+		AF04BFF568F16EBA578CC7EF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.2389.DotViewerTests;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				SWIFT_VERSION = 5.10;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dot Viewer.app/Contents/MacOS/Dot Viewer";
+			};
+			name = Debug;
+		};
+		B64F7B58CBD1A3D566F9C757 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.2389.DotViewerTests;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = (
+					"$(PROJECT_DIR)/DotViewer/Generated/include",
+				);
+				SWIFT_VERSION = 5.10;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dot Viewer.app/Contents/MacOS/Dot Viewer";
+			};
+			name = Release;
+		};
+		C479575BCFF9C15A04149F5F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.2389.DotViewerUITests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.10;
+				TEST_TARGET_NAME = DotViewer;
+			};
+			name = Release;
+		};
 		C77B0280E48E6AF74809C546 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -290,6 +495,7 @@
 				CODE_SIGN_ENTITLEMENTS = DotViewer/DotViewer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/DotViewer/Generated/include",
@@ -310,6 +516,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.2389.dot-viewer";
+				PRODUCT_MODULE_NAME = DotViewer;
 				PRODUCT_NAME = "Dot Viewer";
 				SDKROOT = macosx;
 				SWIFT_INCLUDE_PATHS = (
@@ -326,6 +533,7 @@
 				CODE_SIGN_ENTITLEMENTS = DotViewer/DotViewer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/DotViewer/Generated/include",
@@ -346,6 +554,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.2389.dot-viewer";
+				PRODUCT_MODULE_NAME = DotViewer;
 				PRODUCT_NAME = "Dot Viewer";
 				SDKROOT = macosx;
 				SWIFT_INCLUDE_PATHS = (
@@ -358,6 +567,24 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		112A248639A1255BB8AF3F9F /* Build configuration list for PBXNativeTarget "DotViewerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D15CBD64A2891C953EAA282 /* Debug */,
+				C479575BCFF9C15A04149F5F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		129774828F2D467B8CB34215 /* Build configuration list for PBXNativeTarget "DotViewerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF04BFF568F16EBA578CC7EF /* Debug */,
+				B64F7B58CBD1A3D566F9C757 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		55E218C9C5532EE4F0D77BDE /* Build configuration list for PBXNativeTarget "DotViewer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

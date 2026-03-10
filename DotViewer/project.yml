@@ -34,6 +34,8 @@ targets:
         INFOPLIST_FILE: "DotViewer/Info.plist"
         CODE_SIGN_ENTITLEMENTS: "DotViewer/DotViewer.entitlements"
         CODE_SIGN_STYLE: "Automatic"
+        DEFINES_MODULE: true
+        PRODUCT_MODULE_NAME: "DotViewer"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         OTHER_LDFLAGS:
           - "-ldot_core"
@@ -54,3 +56,35 @@ targets:
       # The bindings contain checksums that must match the linked library exactly.
     entitlements:
       path: DotViewer/DotViewer.entitlements
+
+  DotViewerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: DotViewerTests
+    dependencies:
+      - target: DotViewer
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Dot Viewer.app/Contents/MacOS/Dot Viewer"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        SWIFT_INCLUDE_PATHS:
+          - "$(PROJECT_DIR)/DotViewer/Generated/include"
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/DotViewer/Generated/include"
+
+  DotViewerUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: DotViewerUITests
+    dependencies:
+      - target: DotViewer
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: true

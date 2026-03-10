@@ -15,6 +15,9 @@ Requires **macOS 14.0** or later. The app checks for updates automatically via S
 - **Live preview** — edits render to SVG in real time with debounced updates (300ms)
 - **Multiple layout engines** — dot, neato, fdp, circo, twopi, sfdp selectable from the toolbar
 - **Bidirectional navigation** — click a node in the preview to jump to its definition in the editor, and vice versa
+- **Line numbers** — gutter with dynamic-width line numbers, current line highlighting, and click-to-select
+- **Syntax highlighting** — visual cues for DOT keywords, strings, comments, attributes, and arrow operators
+- **Bracket matching** — matching brackets are highlighted as you navigate the code
 - **Tabbed editing** — open multiple `.dot`/`.gv` files as native macOS window tabs
 - **Zoom and pan** — navigate large graphs in the SVG preview
 - **Undo/redo** — standard document undo support
@@ -64,6 +67,16 @@ cd DotViewer && xcodegen generate
 open DotViewer.xcodeproj
 ```
 
+### Running Tests
+
+```bash
+# Unit tests (DotParser logic — 29 tests)
+xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=macOS' -only-testing:DotViewerTests
+
+# UI scenario tests (7 tests, requires macOS automation permission)
+xcodebuild test -scheme DotViewer -configuration Debug -destination 'platform=macOS' -only-testing:DotViewerUITests
+```
+
 ## Project Structure
 
 ```
@@ -74,6 +87,8 @@ dot-core/             Rust library (Graphviz FFI + UniFFI bindings)
 DotViewer/            SwiftUI macOS app
   project.yml         XcodeGen spec
   DotViewer/          App source (views, document model, Sparkle updater)
+  DotViewerTests/     Unit tests (DotParser)
+  DotViewerUITests/   UI scenario tests
 scripts/              Build and release helper scripts
 Makefile              Top-level build orchestration
 ```
