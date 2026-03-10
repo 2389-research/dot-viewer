@@ -7,10 +7,19 @@ import AppKit
 @main
 struct DotViewerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    private let sparkleUpdateController = SparkleUpdateController()
 
     var body: some Scene {
         DocumentGroup(newDocument: { DotDocument() }) { file in
             ContentView(document: file.document)
+        }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    sparkleUpdateController.checkForUpdates()
+                }
+                .disabled(!sparkleUpdateController.canCheckForUpdates)
+            }
         }
     }
 }
