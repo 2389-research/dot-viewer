@@ -1,5 +1,5 @@
 // ABOUTME: Main content view with split-pane layout for editing and previewing DOT files.
-// ABOUTME: Left pane is the text editor, right pane is the live SVG preview.
+// ABOUTME: Coordinates bidirectional linking between the text editor and SVG preview.
 
 import SwiftUI
 
@@ -10,11 +10,13 @@ struct ContentView: View {
     @State private var selectedEngine: LayoutEngine = .dot
     @State private var liveMode: Bool = true
     @State private var renderTask: Task<Void, Never>?
+    @State private var cursorNodeId: String?
+    @StateObject private var editorNavigator = EditorNavigator()
 
     var body: some View {
         HSplitView {
             VStack(spacing: 0) {
-                EditorView(text: $document.text)
+                EditorView(text: $document.text, cursorNodeId: $cursorNodeId, navigator: editorNavigator)
                     .onChange(of: document.text) {
                         if liveMode {
                             scheduleRender()
@@ -37,8 +39,16 @@ struct ContentView: View {
             }
             .frame(minWidth: 300)
 
-            PreviewView(svgContent: svgOutput, errorMessage: errorMessage)
-                .frame(minWidth: 300)
+            PreviewView(
+                svgContent: svgOutput,
+                errorMessage: errorMessage,
+                highlightedNodeId: cursorNodeId,
+                onNodeClicked: { nodeId in
+                    cursorNodeId = nodeId
+                    editorNavigator.navigateToNode(nodeId)
+                }
+            )
+            .frame(minWidth: 300)
         }
         .frame(minWidth: 800, minHeight: 500)
         .toolbar {

@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <!-- ABOUTME: HTML shell for displaying SVG output from Graphviz rendering. -->
-<!-- ABOUTME: Supports mouse wheel zoom, click-drag panning, and fit-to-view reset. -->
+<!-- ABOUTME: Supports zoom, pan, light/dark theme, node highlighting, and click-to-select. -->
 <html>
 <head>
 <meta charset="utf-8">
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-        background: #1e1e1e;
+        background: #f5f5f5;
         width: 100vw;
         height: 100vh;
         overflow: hidden;
         cursor: grab;
+    }
+    @media (prefers-color-scheme: dark) {
+        body { background: #1e1e1e; }
     }
     body.dragging { cursor: grabbing; }
     #viewport {
@@ -25,6 +28,48 @@
     #container svg {
         display: block;
     }
+
+    /* Dark mode SVG color inversion for default Graphviz colors */
+    @media (prefers-color-scheme: dark) {
+        #container svg .graph > polygon { fill: transparent !important; }
+        #container svg text[fill="black"],
+        #container svg text[fill="#000000"] { fill: #d4d4d4 !important; }
+        #container svg [stroke="black"] { stroke: #d4d4d4 !important; }
+        #container svg .edge polygon[fill="black"] { fill: #d4d4d4 !important; }
+    }
+    /* Light mode: make graph background transparent so page bg shows */
+    #container svg .graph > polygon { fill: transparent !important; }
+
+    /* Highlighted node/edge styling — fill the whole shape */
+    #container svg .node.active > ellipse,
+    #container svg .node.active > polygon,
+    #container svg .node.active > path {
+        stroke: #007AFF !important;
+        stroke-width: 3px !important;
+        fill: rgba(0, 122, 255, 0.15) !important;
+    }
+    #container svg .node.active > text {
+        fill: #007AFF !important;
+        font-weight: bold;
+    }
+    #container svg .edge.active > path {
+        stroke: #007AFF !important;
+        stroke-width: 3px !important;
+    }
+    #container svg .edge.active > polygon {
+        stroke: #007AFF !important;
+        fill: #007AFF !important;
+    }
+    #container svg .edge.active > text {
+        fill: #007AFF !important;
+    }
+
+    /* Clickable node cursor */
+    #container svg .node,
+    #container svg .edge {
+        cursor: pointer;
+    }
+
     #error {
         color: #ff6b6b;
         font-family: -apple-system, sans-serif;
@@ -42,7 +87,7 @@
         position: fixed;
         bottom: 8px;
         right: 8px;
-        color: rgba(255, 255, 255, 0.4);
+        color: rgba(128, 128, 128, 0.6);
         font-family: -apple-system, sans-serif;
         font-size: 11px;
         pointer-events: none;
@@ -180,8 +225,62 @@
                 svg.style.height = svg.viewBox.baseVal.height + 'px';
             }
 
-            // Fit to view on new content
-            setTimeout(fitToView, 10);
+            // Add click handlers to nodes and edges
+            addClickHandlers();
+
+            // Start at 100% zoom, aligned to top-left
+            setTimeout(function() {
+                scale = 1;
+                translateX = 0;
+                translateY = 0;
+                applyTransform();
+            }, 10);
+        }
+
+        function addClickHandlers() {
+            const groups = document.querySelectorAll('#container svg .node, #container svg .edge');
+            groups.forEach(function(g) {
+                g.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const title = g.querySelector('title');
+                    if (title && window.webkit && window.webkit.messageHandlers &&
+                        window.webkit.messageHandlers.nodeClicked) {
+                        window.webkit.messageHandlers.nodeClicked.postMessage(
+                            title.textContent.trim()
+                        );
+                    }
+                });
+            });
+        }
+
+        function highlightNode(nodeId) {
+            clearHighlights();
+            if (!nodeId) return;
+
+            // Highlight matching nodes
+            document.querySelectorAll('#container svg .node').forEach(function(g) {
+                const title = g.querySelector('title');
+                if (title && title.textContent.trim() === nodeId) {
+                    g.classList.add('active');
+                }
+            });
+
+            // Highlight edges connected to this node
+            document.querySelectorAll('#container svg .edge').forEach(function(g) {
+                const title = g.querySelector('title');
+                if (title) {
+                    const parts = title.textContent.trim().split(/->|--/);
+                    if (parts.some(function(p) { return p.trim() === nodeId; })) {
+                        g.classList.add('active');
+                    }
+                }
+            });
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('#container svg .active').forEach(function(el) {
+                el.classList.remove('active');
+            });
         }
 
         function showError(message) {

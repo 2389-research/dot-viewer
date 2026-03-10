@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		30FAEA41AEAFF3F97316F982 /* DotParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5283D996DF9640711DC39C54 /* DotParser.swift */; };
 		812308620F5AAA97BABC21BC /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3145AC3BE69E00937548BD /* EditorView.swift */; };
 		8C599E6F2E94483E70AF9D5D /* dot_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 610092B008C5F5407DB15BEC /* dot_core.swift */; };
 		AD4D0F0BC961B7802FBB1470 /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F5A2062C4FF5FE811ED5748 /* PreviewView.swift */; };
@@ -23,6 +24,7 @@
 		17029AAFFE34185C8E1079AF /* DotViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotViewerApp.swift; sourceTree = "<group>"; };
 		20DD8AA3B76DA86ED232C5CB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		49FDD87B960FFD7A03A370FE /* DotDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotDocument.swift; sourceTree = "<group>"; };
+		5283D996DF9640711DC39C54 /* DotParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotParser.swift; sourceTree = "<group>"; };
 		5C735ED554FD6439F388259D /* preview.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = preview.html; sourceTree = "<group>"; };
 		6034454B20B7F806316D882D /* DotViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DotViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		610092B008C5F5407DB15BEC /* dot_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dot_core.swift; sourceTree = "<group>"; };
@@ -59,6 +61,7 @@
 			children = (
 				20DD8AA3B76DA86ED232C5CB /* ContentView.swift */,
 				49FDD87B960FFD7A03A370FE /* DotDocument.swift */,
+				5283D996DF9640711DC39C54 /* DotParser.swift */,
 				05BD6CCBDA9F08D08D624B36 /* DotViewer.entitlements */,
 				17029AAFFE34185C8E1079AF /* DotViewerApp.swift */,
 				6F3145AC3BE69E00937548BD /* EditorView.swift */,
@@ -150,6 +153,7 @@
 			files = (
 				B75805BDCD421288D6F9A029 /* ContentView.swift in Sources */,
 				BA2F30ADCC9BE11B62944B56 /* DotDocument.swift in Sources */,
+				30FAEA41AEAFF3F97316F982 /* DotParser.swift in Sources */,
 				B6A2DDC71A9D590C2B9AC81C /* DotViewerApp.swift in Sources */,
 				812308620F5AAA97BABC21BC /* EditorView.swift in Sources */,
 				AD4D0F0BC961B7802FBB1470 /* PreviewView.swift in Sources */,

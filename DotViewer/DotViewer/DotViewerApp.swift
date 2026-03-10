@@ -22,8 +22,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidUpdate(_ notification: Notification) {
-        // Merge any new windows into tabs of the first window
-        let windows = NSApp.windows.filter { $0.isVisible && $0.tabbingMode != .disallowed }
+        // Merge any new windows into tabs of the first window.
+        // Filter to only document windows by requiring a toolbar (which
+        // DocumentGroup windows have). Internal AppKit/WebKit helper windows
+        // lack toolbars and crash on addTabbedWindow due to unsupported
+        // titlebarAccessoryViewControllers.
+        let windows = NSApp.windows.filter {
+            $0.isVisible &&
+            $0.tabbingMode != .disallowed &&
+            $0.toolbar != nil
+        }
         guard windows.count > 1, let primary = windows.first else { return }
 
         for window in windows.dropFirst() {
