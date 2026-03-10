@@ -243,28 +243,26 @@ jobs:
           mkdir -p "$DMG_STAGING"
           cp -R "$APP_PATH" "$DMG_STAGING/"
 
-          # create-dmg returns exit code 2 when it can't set a background (no background image provided)
-          # This is expected and not an error
+          # Build create-dmg arguments
+          DMG_ARGS=(
+            --volname "Dot Viewer"
+            --window-pos 200 120
+            --window-size 660 400
+            --icon-size 160
+            --icon "Dot Viewer.app" 180 170
+            --hide-extension "Dot Viewer.app"
+            --app-drop-link 480 170
+            --codesign "$DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY"
+          )
+
           # Use app icon as volume icon if it exists
-          VOLICON_FLAG=""
           ICNS_PATH="$APP_PATH/Contents/Resources/AppIcon.icns"
           if [ -f "$ICNS_PATH" ]; then
-            VOLICON_FLAG="--volicon $ICNS_PATH"
+            DMG_ARGS+=(--volicon "$ICNS_PATH")
           fi
 
-          create-dmg \
-            --volname "Dot Viewer" \
-            $VOLICON_FLAG \
-            --window-pos 200 120 \
-            --window-size 660 400 \
-            --icon-size 160 \
-            --icon "Dot Viewer.app" 180 170 \
-            --hide-extension "Dot Viewer.app" \
-            --app-drop-link 480 170 \
-            --codesign "$DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY" \
-            "$APP_DMG" \
-            "$DMG_STAGING" \
-            || test $? -eq 2
+          # create-dmg returns exit code 2 when no background image is provided
+          create-dmg "${DMG_ARGS[@]}" "$APP_DMG" "$DMG_STAGING" || test $? -eq 2
 
           echo "app_dmg=$APP_DMG" >> "$GITHUB_OUTPUT"
 
