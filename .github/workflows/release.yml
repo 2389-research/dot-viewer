@@ -33,7 +33,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Tools
-        run: brew install xcodegen
+        run: brew install xcodegen bison flex
+
+      - name: Clone Graphviz Vendor Source
+        run: |
+          cd dot-core
+          git clone --depth 1 --branch 12.2.1 https://gitlab.com/graphviz/graphviz.git graphviz-vendor
 
       - name: Build Rust Core and Generate Bindings
         run: |
