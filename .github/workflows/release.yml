@@ -33,7 +33,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Tools
-        run: brew install xcodegen bison flex
+        run: brew install xcodegen bison flex create-dmg
 
       - name: Clone Graphviz Vendor Source
         run: |
@@ -223,18 +223,42 @@ jobs:
           APP_ZIP="$ARTIFACTS_DIR/DotViewer-${VERSION}-macOS.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$APP_ZIP"
 
-          # Create DMG (for humans)
-          APP_DMG="$ARTIFACTS_DIR/DotViewer-${VERSION}-macOS.dmg"
-          hdiutil create \
-            -volname "Dot Viewer" \
-            -srcfolder "$APP_PATH" \
-            -ov \
-            -format UDZO \
-            "$APP_DMG"
-
           echo "app_zip=$APP_ZIP" >> "$GITHUB_OUTPUT"
-          echo "app_dmg=$APP_DMG" >> "$GITHUB_OUTPUT"
           echo "artifacts_dir=$ARTIFACTS_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Create DMG
+        id: dmg
+        env:
+          DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP_PATH="${{ steps.build.outputs.app_path }}"
+          ARTIFACTS_DIR="${{ steps.notarize.outputs.artifacts_dir }}"
+          APP_DMG="$ARTIFACTS_DIR/DotViewer-${VERSION}-macOS.dmg"
+
+          # Stage the app in a directory for create-dmg
+          DMG_STAGING="$RUNNER_TEMP/dmg-staging"
+          mkdir -p "$DMG_STAGING"
+          cp -R "$APP_PATH" "$DMG_STAGING/"
+
+          # create-dmg returns exit code 2 when it can't set a background (no background image provided)
+          # This is expected and not an error
+          create-dmg \
+            --volname "Dot Viewer" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 160 \
+            --icon "Dot Viewer.app" 180 170 \
+            --hide-extension "Dot Viewer.app" \
+            --app-drop-link 480 170 \
+            --codesign "$DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY" \
+            "$APP_DMG" \
+            "$DMG_STAGING" \
+            || test $? -eq 2
+
+          echo "app_dmg=$APP_DMG" >> "$GITHUB_OUTPUT"
 
       - name: Build Sparkle Appcast Tool
         run: |
@@ -280,7 +304,7 @@ jobs:
         with:
           files: |
             ${{ steps.notarize.outputs.app_zip }}
-            ${{ steps.notarize.outputs.app_dmg }}
+            ${{ steps.dmg.outputs.app_dmg }}
             ${{ steps.notarize.outputs.artifacts_dir }}/appcast.xml
           generate_release_notes: true
           body: |
@@ -305,7 +329,7 @@ jobs:
           name: dot-viewer-${{ github.ref_name }}
           path: |
             ${{ steps.notarize.outputs.app_zip }}
-            ${{ steps.notarize.outputs.app_dmg }}
+            ${{ steps.dmg.outputs.app_dmg }}
             ${{ steps.notarize.outputs.artifacts_dir }}/appcast.xml
 
       - name: Cleanup Keychain
