@@ -3,3 +3,12 @@ dot-core/graphviz-vendor/
 
 # Generated Swift bindings (regenerated via make generate-bindings)
 DotViewer/DotViewer/Generated/
+
+# WASM build artifacts
+dot-core-wasm/pkg/
+dot-core-wasm/target/
+
+# Web build artifacts
+web/node_modules/
+web/build/
+web/.svelte-kit/

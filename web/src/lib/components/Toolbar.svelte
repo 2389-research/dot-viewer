@@ -23,7 +23,7 @@
         Engine:
         <select value={engine} onchange={handleChange}>
             {#each engines as eng}
-                <option value={eng}>{eng}</option>
+                <option value={eng} selected={eng === engine}>{eng}</option>
             {/each}
         </select>
     </label>

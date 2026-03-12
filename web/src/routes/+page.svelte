@@ -17,18 +17,25 @@
     let highlightedNode: string | undefined = $state(undefined);
     let editor: Editor;
 
+    let renderGeneration = 0;
+
     onMount(async () => {
-        // Trigger initial render once WASM loads
-        loading = false;
         await render(currentSource);
+        loading = false;
     });
 
     async function render(source: string) {
+        const generation = ++renderGeneration;
         try {
-            svg = await renderDot(source, engine);
-            error = '';
+            const result = await renderDot(source, engine);
+            if (generation === renderGeneration) {
+                svg = result;
+                error = '';
+            }
         } catch (e) {
-            error = e instanceof Error ? e.message : String(e);
+            if (generation === renderGeneration) {
+                error = e instanceof Error ? e.message : String(e);
+            }
         }
     }
 

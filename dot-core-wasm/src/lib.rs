@@ -432,9 +432,10 @@ fn definition_for_node_internal<'a>(graph: &'a DotGraph, node_id: &str) -> Optio
 /// Parse DOT source into a structured graph model. Returns a JS object with
 /// a `statements` array containing tagged statement objects.
 #[wasm_bindgen(js_name = "parseDot")]
-pub fn parse_dot_wasm(source: &str) -> JsValue {
+pub fn parse_dot_wasm(source: &str) -> Result<JsValue, JsValue> {
     let graph = parse_dot(source);
-    serde_wasm_bindgen::to_value(&graph).unwrap_or(JsValue::NULL)
+    serde_wasm_bindgen::to_value(&graph)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 /// Returns the node ID at the given cursor offset in the DOT source.
