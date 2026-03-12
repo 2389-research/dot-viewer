@@ -33,6 +33,17 @@ pub struct DotGraph {
     pub statements: Vec<DotStatement>,
 }
 
+impl DotStatement {
+    /// Returns the source range for this statement.
+    fn source_range(&self) -> &SourceRange {
+        match self {
+            DotStatement::NodeDefinition { source_range, .. } => source_range,
+            DotStatement::Edge { source_range, .. } => source_range,
+            DotStatement::GraphAttribute { source_range } => source_range,
+        }
+    }
+}
+
 // -- Scanning Helpers --
 
 /// Returns true if the byte is a valid DOT identifier character (alphanumeric or underscore).
@@ -351,6 +362,51 @@ pub fn parse_dot(source: String) -> DotGraph {
     DotGraph { statements }
 }
 
+/// Find the statement containing the given character offset.
+#[uniffi::export]
+pub fn statement_at(graph: &DotGraph, offset: u32) -> Option<DotStatement> {
+    graph.statements.iter().find(|s| {
+        let range = s.source_range();
+        offset >= range.location && offset < range.location + range.length
+    }).cloned()
+}
+
+/// Returns the node ID relevant to a given cursor offset within a statement.
+/// For node definitions, always returns the node ID.
+/// For edges, returns whichever node the cursor is closest to.
+#[uniffi::export]
+pub fn node_id_at(statement: &DotStatement, offset: u32) -> Option<String> {
+    match statement {
+        DotStatement::NodeDefinition { id, .. } => Some(id.clone()),
+        DotStatement::Edge { from, to, from_range, to_range, .. } => {
+            let from_center = from_range.location + from_range.length / 2;
+            let to_center = to_range.location + to_range.length / 2;
+            let dist_from = (offset as i64 - from_center as i64).unsigned_abs() as u32;
+            let dist_to = (offset as i64 - to_center as i64).unsigned_abs() as u32;
+            if dist_to < dist_from { Some(to.clone()) } else { Some(from.clone()) }
+        }
+        DotStatement::GraphAttribute { .. } => None,
+    }
+}
+
+/// Find the first node definition for a given node ID, falling back to any edge referencing it.
+#[uniffi::export]
+pub fn definition_for_node(graph: &DotGraph, node_id: String) -> Option<DotStatement> {
+    // Priority 1: explicit node definition
+    for stmt in &graph.statements {
+        if let DotStatement::NodeDefinition { id, .. } = stmt {
+            if id == &node_id { return Some(stmt.clone()); }
+        }
+    }
+    // Priority 2: first edge referencing this node
+    for stmt in &graph.statements {
+        if let DotStatement::Edge { from, to, .. } = stmt {
+            if from == &node_id || to == &node_id { return Some(stmt.clone()); }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -513,5 +569,100 @@ mod tests {
             if let DotStatement::NodeDefinition { id, .. } = s { Some(id.as_str()) } else { None }
         }).collect();
         assert!(!node_ids.contains(&"strict"));
+    }
+
+    #[test]
+    fn test_statement_at_offset_finds_correct_statement() {
+        let dot = "digraph G {\n    A\n    B -> C\n}";
+        let graph = parse_dot(dot.to_string());
+        let b_offset = dot.find("B").unwrap() as u32;
+        let stmt = statement_at(&graph, b_offset);
+        assert!(stmt.is_some());
+        match stmt.unwrap() {
+            DotStatement::Edge { from, .. } => assert_eq!(from, "B"),
+            _ => panic!("Expected edge statement at B's offset"),
+        }
+    }
+
+    #[test]
+    fn test_statement_at_offset_returns_none_outside_statements() {
+        let dot = "digraph G {\n\n\n    A\n}";
+        let graph = parse_dot(dot.to_string());
+        let stmt = statement_at(&graph, 13);
+        assert!(stmt.is_none());
+    }
+
+    #[test]
+    fn test_node_id_at_offset_for_node_definition() {
+        let dot = "digraph G {\n    A [label=\"Hello\"]\n}";
+        let graph = parse_dot(dot.to_string());
+        let a_offset = dot.find('A').unwrap() as u32;
+        let stmt = statement_at(&graph, a_offset);
+        assert!(stmt.is_some());
+        assert_eq!(node_id_at(&stmt.unwrap(), a_offset), Some("A".to_string()));
+    }
+
+    #[test]
+    fn test_node_id_at_offset_in_attribute_area() {
+        let dot = "digraph G {\n    A [label=\"Hello\"]\n}";
+        let graph = parse_dot(dot.to_string());
+        let label_offset = dot.find("label").unwrap() as u32;
+        let stmt = statement_at(&graph, label_offset);
+        assert!(stmt.is_some());
+        assert_eq!(node_id_at(&stmt.unwrap(), label_offset), Some("A".to_string()));
+    }
+
+    #[test]
+    fn test_node_id_at_offset_for_edge_selects_closer_node() {
+        let dot = "digraph G {\n    A -> B\n}";
+        let graph = parse_dot(dot.to_string());
+        let a_offset = dot[12..].find('A').unwrap() as u32 + 12;
+        let b_offset = dot[12..].find('B').unwrap() as u32 + 12;
+        let stmt_a = statement_at(&graph, a_offset).unwrap();
+        let stmt_b = statement_at(&graph, b_offset).unwrap();
+        assert_eq!(node_id_at(&stmt_a, a_offset), Some("A".to_string()));
+        assert_eq!(node_id_at(&stmt_b, b_offset), Some("B".to_string()));
+    }
+
+    #[test]
+    fn test_definition_for_node_finds_node_definition() {
+        let dot = "digraph G {\n    A [label=\"Hello\"]\n    A -> B\n}";
+        let graph = parse_dot(dot.to_string());
+        let stmt = definition_for_node(&graph, "A".to_string());
+        assert!(stmt.is_some());
+        match stmt.unwrap() {
+            DotStatement::NodeDefinition { id, .. } => assert_eq!(id, "A"),
+            _ => panic!("Expected node definition"),
+        }
+    }
+
+    #[test]
+    fn test_definition_for_node_falls_back_to_edge() {
+        let dot = "digraph G {\n    A -> B\n}";
+        let graph = parse_dot(dot.to_string());
+        let stmt = definition_for_node(&graph, "B".to_string());
+        assert!(stmt.is_some());
+        match stmt.unwrap() {
+            DotStatement::Edge { to, .. } => assert_eq!(to, "B"),
+            _ => panic!("Expected edge fallback"),
+        }
+    }
+
+    #[test]
+    fn test_definition_for_node_returns_none_for_unknown() {
+        let dot = "digraph G {\n    A -> B\n}";
+        let graph = parse_dot(dot.to_string());
+        assert!(definition_for_node(&graph, "Z".to_string()).is_none());
+    }
+
+    #[test]
+    fn test_graph_attribute_returns_none_node_id() {
+        let dot = "digraph G { graph [rankdir=LR] }";
+        let graph = parse_dot(dot.to_string());
+        let graph_attr = graph.statements.iter().find(|s| matches!(s, DotStatement::GraphAttribute { .. }));
+        assert!(graph_attr.is_some());
+        let attr = graph_attr.unwrap();
+        let range = attr.source_range();
+        assert!(node_id_at(attr, range.location).is_none());
     }
 }
