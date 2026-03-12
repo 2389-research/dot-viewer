@@ -21,7 +21,12 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@codemirror/commands": "^6.10.3",
+		"@codemirror/language": "^6.12.2",
+		"@codemirror/state": "^6.6.0",
+		"@codemirror/view": "^6.40.0",
 		"@hpcc-js/wasm-graphviz": "^1.21.1",
+		"codemirror": "^6.0.2",
 		"dot-core-wasm": "file:../dot-core-wasm/pkg"
 	}
 }
