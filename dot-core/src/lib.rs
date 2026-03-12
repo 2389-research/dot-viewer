@@ -2,6 +2,9 @@
 // ABOUTME: Provides DOT parsing, validation, and SVG rendering via Graphviz.
 
 mod graphviz;
+mod parser;
+
+pub use parser::{DotGraph, DotStatement, SourceRange};
 
 uniffi::setup_scaffolding!();
 
