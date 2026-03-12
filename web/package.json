@@ -19,5 +19,9 @@
 		"svelte-check": "^4.4.2",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1"
+	},
+	"dependencies": {
+		"@hpcc-js/wasm-graphviz": "^1.21.1",
+		"dot-core-wasm": "file:../dot-core-wasm/pkg"
 	}
 }
