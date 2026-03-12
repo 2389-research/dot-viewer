@@ -38,7 +38,7 @@ export interface DotGraph {
 
 // Lazy-initialized module references
 
-let parserReady = false;
+let parserModule: typeof import("dot-core-wasm");
 let graphvizInstance: Graphviz;
 
 let initPromise: Promise<void> | null = null;
@@ -53,14 +53,14 @@ async function ensureInit(): Promise<void> {
 	}
 
 	initPromise = (async () => {
-		const [parserModule, graphvizModule] = await Promise.all([
+		const [parser, graphvizModule] = await Promise.all([
 			import("dot-core-wasm"),
 			import("@hpcc-js/wasm-graphviz"),
 		]);
 
 		// Initialize the dot-core WASM parser
-		await parserModule.default();
-		parserReady = true;
+		await parser.default();
+		parserModule = parser;
 
 		// Initialize the Graphviz renderer
 		graphvizInstance = await graphvizModule.Graphviz.load();
@@ -74,8 +74,7 @@ async function ensureInit(): Promise<void> {
  */
 export async function parseDot(source: string): Promise<DotGraph> {
 	await ensureInit();
-	const { parseDot: wasmParseDot } = await import("dot-core-wasm");
-	return wasmParseDot(source) as DotGraph;
+	return parserModule.parseDot(source) as DotGraph;
 }
 
 /**
@@ -98,8 +97,7 @@ export async function nodeIdAtOffset(
 	offset: number,
 ): Promise<string | undefined> {
 	await ensureInit();
-	const { nodeIdAtOffset: wasmNodeIdAtOffset } = await import("dot-core-wasm");
-	return wasmNodeIdAtOffset(source, offset);
+	return parserModule.nodeIdAtOffset(source, offset);
 }
 
 /**
@@ -111,7 +109,5 @@ export async function definitionOffsetForNode(
 	nodeId: string,
 ): Promise<number | undefined> {
 	await ensureInit();
-	const { definitionOffsetForNode: wasmDefinitionOffsetForNode } =
-		await import("dot-core-wasm");
-	return wasmDefinitionOffsetForNode(source, nodeId);
+	return parserModule.definitionOffsetForNode(source, nodeId);
 }
