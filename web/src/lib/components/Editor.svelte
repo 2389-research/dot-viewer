@@ -12,15 +12,18 @@
         value = '',
         debounceMs = 300,
         onchange,
+        oncursorchange,
     }: {
         value?: string;
         debounceMs?: number;
         onchange?: (value: string) => void;
+        oncursorchange?: (offset: number) => void;
     } = $props();
 
     let container: HTMLDivElement;
     let view: EditorView;
     let debounceTimer: ReturnType<typeof setTimeout>;
+    let cursorDebounceTimer: ReturnType<typeof setTimeout>;
 
     onMount(() => {
         const state = EditorState.create({
@@ -39,6 +42,13 @@
                             onchange?.(newValue);
                         }, debounceMs);
                     }
+                    if (update.selectionSet) {
+                        const offset = update.state.selection.main.head;
+                        clearTimeout(cursorDebounceTimer);
+                        cursorDebounceTimer = setTimeout(() => {
+                            oncursorchange?.(offset);
+                        }, debounceMs);
+                    }
                 }),
             ],
         });
@@ -47,6 +57,7 @@
 
         return () => {
             clearTimeout(debounceTimer);
+            clearTimeout(cursorDebounceTimer);
             view?.destroy();
         };
     });

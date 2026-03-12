@@ -6,7 +6,7 @@
     import Editor from '$lib/components/Editor.svelte';
     import Preview from '$lib/components/Preview.svelte';
     import Toolbar from '$lib/components/Toolbar.svelte';
-    import { renderDot, definitionOffsetForNode } from '$lib/wasm';
+    import { renderDot, definitionOffsetForNode, nodeIdAtOffset } from '$lib/wasm';
     import type { Engine } from '@hpcc-js/wasm-graphviz';
 
     let svg = $state('');
@@ -14,6 +14,7 @@
     let loading = $state(true);
     let engine: Engine = $state('dot');
     let currentSource = $state('digraph G {\n    A -> B\n    B -> C\n    C -> A\n}');
+    let highlightedNode: string | undefined = $state(undefined);
     let editor: Editor;
 
     onMount(async () => {
@@ -47,6 +48,10 @@
             editor.scrollToOffset(offset);
         }
     }
+
+    async function handleCursorChange(offset: number) {
+        highlightedNode = await nodeIdAtOffset(currentSource, offset);
+    }
 </script>
 
 <div class="app">
@@ -57,10 +62,11 @@
                 bind:this={editor}
                 value={currentSource}
                 onchange={handleEditorChange}
+                oncursorchange={handleCursorChange}
             />
         </div>
         <div class="preview-pane">
-            <Preview {svg} {error} {loading} onnodeclick={handleNodeClick} />
+            <Preview {svg} {error} {loading} onnodeclick={handleNodeClick} {highlightedNode} />
         </div>
     </div>
 </div>

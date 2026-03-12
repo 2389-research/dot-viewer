@@ -10,15 +10,42 @@
         error = '',
         loading = false,
         onnodeclick,
+        highlightedNode,
     }: {
         svg?: string;
         error?: string;
         loading?: boolean;
         onnodeclick?: (nodeId: string) => void;
+        highlightedNode?: string;
     } = $props();
 
     let container: HTMLDivElement;
     let svgContainer: HTMLDivElement;
+
+    // Apply or remove the 'highlighted' class on the matching SVG node group
+    function updateHighlight(nodeId: string | undefined) {
+        if (!svgContainer) return;
+        // Clear any existing highlights
+        for (const el of svgContainer.querySelectorAll('.node.highlighted')) {
+            el.classList.remove('highlighted');
+        }
+        if (!nodeId) return;
+        // Find the node group whose <title> matches the nodeId
+        for (const node of svgContainer.querySelectorAll('.node')) {
+            const title = node.querySelector('title');
+            if (title?.textContent === nodeId) {
+                node.classList.add('highlighted');
+                return;
+            }
+        }
+    }
+
+    $effect(() => {
+        // Re-run when svg or highlightedNode changes
+        svg;
+        // Use a microtask so the SVG DOM has been updated by Svelte
+        queueMicrotask(() => updateHighlight(highlightedNode));
+    });
     let panzoomInstance: ReturnType<typeof panzoom> | null = null;
 
     onMount(() => {
@@ -98,5 +125,10 @@
         padding: 8px 16px;
         font-size: 13px;
         z-index: 1;
+    }
+    .svg-container :global(.node.highlighted ellipse),
+    .svg-container :global(.node.highlighted polygon) {
+        stroke: #e6a817;
+        stroke-width: 3px;
     }
 </style>
