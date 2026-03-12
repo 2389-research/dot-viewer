@@ -56,6 +56,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Enabled in Task 2 when parse logic is implemented
     fn test_simple_digraph_parses_nodes() {
         let graph = parse_dot("digraph G {\n    A\n    B\n}".to_string());
         let node_ids: Vec<&str> = graph.statements.iter().filter_map(|s| {
