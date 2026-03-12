@@ -5,33 +5,18 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
-    let is_wasm = target_arch == "wasm32";
-
     // Homebrew bison and flex are keg-only on macOS, so we must
-    // point CMake at them explicitly. On non-Homebrew systems (e.g.
-    // CI Linux), this gracefully returns None instead of panicking.
+    // point CMake at them explicitly.
     let homebrew_prefix = std::process::Command::new("brew")
         .arg("--prefix")
         .output()
-        .ok()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "/opt/homebrew".to_string());
 
-    let mut cmake_cfg = cmake::Config::new("graphviz-vendor");
+    let bison_exe = format!("{}/opt/bison/bin/bison", homebrew_prefix);
+    let flex_exe = format!("{}/opt/flex/bin/flex", homebrew_prefix);
 
-    // When targeting WASM, use Emscripten's CMake toolchain file
-    // so that the vendored C code is compiled to WebAssembly.
-    if is_wasm {
-        let emsdk =
-            env::var("EMSDK").expect("EMSDK environment variable must be set for WASM builds");
-        let toolchain = format!(
-            "{}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
-            emsdk
-        );
-        cmake_cfg.define("CMAKE_TOOLCHAIN_FILE", &toolchain);
-    }
-
-    cmake_cfg
+    let dst = cmake::Config::new("graphviz-vendor")
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("ENABLE_LTDL", "OFF")
         .define("WITH_GVEDIT", "OFF")
@@ -53,19 +38,10 @@ fn main() {
         .define("ENABLE_PYTHON", "OFF")
         .define("ENABLE_R", "OFF")
         .define("with_cxx_api", "OFF")
-        .define("with_cxx_tests", "OFF");
-
-    // Only set bison/flex paths if Homebrew is available on this system.
-    // Bison and flex are host-side code generators, so they work for
-    // both native and cross-compilation targets.
-    if let Some(ref prefix) = homebrew_prefix {
-        let bison_exe = format!("{}/opt/bison/bin/bison", prefix);
-        let flex_exe = format!("{}/opt/flex/bin/flex", prefix);
-        cmake_cfg.define("BISON_EXECUTABLE", &bison_exe);
-        cmake_cfg.define("FLEX_EXECUTABLE", &flex_exe);
-    }
-
-    let dst = cmake_cfg.build();
+        .define("with_cxx_tests", "OFF")
+        .define("BISON_EXECUTABLE", &bison_exe)
+        .define("FLEX_EXECUTABLE", &flex_exe)
+        .build();
 
     let lib_dir = dst.join("lib");
     let build_dir = dst.join("build");
@@ -144,17 +120,14 @@ fn main() {
         println!("cargo:rustc-link-lib=static={}", lib);
     }
 
-    // System libraries — Emscripten provides its own libc and handles
-    // zlib/expat via ports, so we only link these for native builds.
-    if !is_wasm {
-        println!("cargo:rustc-link-lib=expat");
-        println!("cargo:rustc-link-lib=z");
+    // System libraries
+    println!("cargo:rustc-link-lib=expat");
+    println!("cargo:rustc-link-lib=z");
 
-        #[cfg(target_os = "macos")]
-        println!("cargo:rustc-link-lib=c++");
-        #[cfg(not(target_os = "macos"))]
-        println!("cargo:rustc-link-lib=stdc++");
-    }
+    #[cfg(target_os = "macos")]
+    println!("cargo:rustc-link-lib=c++");
+    #[cfg(not(target_os = "macos"))]
+    println!("cargo:rustc-link-lib=stdc++");
 
     // Generate Rust bindings from the C headers
     let include_dir = dst.join("include");
