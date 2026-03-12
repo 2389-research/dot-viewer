@@ -1,6 +1,7 @@
 // ABOUTME: Public API for the dot-core library, exposed to Swift via UniFFI.
 // ABOUTME: Provides DOT parsing, validation, and SVG rendering via Graphviz.
 
+#[cfg(not(target_arch = "wasm32"))]
 mod graphviz;
 mod parser;
 
@@ -37,11 +38,13 @@ impl std::fmt::Display for DotError {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[uniffi::export]
 pub fn render_dot(dot_source: String, engine: LayoutEngine) -> Result<String, DotError> {
     graphviz::render_to_svg(&dot_source, &engine)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[uniffi::export]
 pub fn validate_dot(dot_source: String) -> Result<(), DotError> {
     graphviz::validate_syntax(&dot_source)
@@ -51,6 +54,7 @@ pub fn validate_dot(dot_source: String) -> Result<(), DotError> {
 mod tests {
     use super::*;
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn test_render_simple_graph() {
         let dot = "digraph { a -> b }".to_string();
@@ -59,6 +63,7 @@ mod tests {
         assert!(svg.contains("</svg>"));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn test_render_invalid_dot() {
         let dot = "not a valid dot string {{{".to_string();
@@ -66,12 +71,14 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn test_validate_valid_dot() {
         let dot = "digraph { a -> b }".to_string();
         assert!(validate_dot(dot).is_ok());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn test_validate_invalid_dot() {
         let dot = "not valid {{{".to_string();
