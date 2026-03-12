@@ -27,6 +27,7 @@
 		"@codemirror/view": "^6.40.0",
 		"@hpcc-js/wasm-graphviz": "^1.21.1",
 		"codemirror": "^6.0.2",
-		"dot-core-wasm": "file:../dot-core-wasm/pkg"
+		"dot-core-wasm": "file:../dot-core-wasm/pkg",
+		"panzoom": "^9.4.3"
 	}
 }
