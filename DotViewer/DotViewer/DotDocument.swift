@@ -5,10 +5,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
+    // Custom exported types declared in Info.plist for .dot and .gv extensions.
+    static let graphvizDot: UTType = UTType("com.2389.dot-viewer.dot") ?? .plainText
+    static let graphvizGv: UTType = UTType("com.2389.dot-viewer.gv") ?? .plainText
     // macOS maps .dot to com.microsoft.word.dot (Word template), so we must
     // include that type to allow opening .dot files from the file picker.
     static let msWordDot: UTType = UTType("com.microsoft.word.dot") ?? .data
-    static let gvFile: UTType = UTType(filenameExtension: "gv") ?? .plainText
 }
 
 final class DotDocument: ReferenceFileDocument {
@@ -16,7 +18,7 @@ final class DotDocument: ReferenceFileDocument {
 
     @Published var text: String
 
-    static var readableContentTypes: [UTType] { [.msWordDot, .gvFile, .plainText] }
+    static var readableContentTypes: [UTType] { [.graphvizDot, .graphvizGv, .msWordDot, .plainText] }
     static var writableContentTypes: [UTType] { [.plainText] }
 
     init(text: String = "digraph {\n    a -> b\n    b -> c\n}") {

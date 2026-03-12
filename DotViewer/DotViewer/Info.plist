@@ -29,8 +29,11 @@
 			<array>
 				<string>com.2389.dot-viewer.dot</string>
 				<string>com.2389.dot-viewer.gv</string>
+				<string>com.microsoft.word.dot</string>
 				<string>public.plain-text</string>
 			</array>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
 		</dict>
 	</array>
 	<key>UTExportedTypeDeclarations</key>
