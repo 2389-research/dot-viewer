@@ -234,6 +234,14 @@ version = "0.1.0"
 dependencies = [
  "bindgen",
  "cmake",
+ "dot-parser",
+ "uniffi",
+]
+
+[[package]]
+name = "dot-parser"
+version = "0.1.0"
+dependencies = [
  "uniffi",
 ]
 
