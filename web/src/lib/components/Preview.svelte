@@ -41,10 +41,11 @@
     }
 
     $effect(() => {
-        // Re-run when svg or highlightedNode changes
-        svg;
+        // Read both reactive values synchronously so Svelte tracks them
+        const currentSvg = svg;
+        const currentNode = highlightedNode;
         // Use a microtask so the SVG DOM has been updated by Svelte
-        queueMicrotask(() => updateHighlight(highlightedNode));
+        queueMicrotask(() => updateHighlight(currentNode));
     });
     let panzoomInstance: ReturnType<typeof panzoom> | null = null;
 
@@ -126,9 +127,22 @@
         font-size: 13px;
         z-index: 1;
     }
+    .svg-container :global(.node) {
+        cursor: pointer;
+    }
+    .svg-container :global(.node ellipse),
+    .svg-container :global(.node polygon) {
+        pointer-events: all;
+    }
     .svg-container :global(.node.highlighted ellipse),
-    .svg-container :global(.node.highlighted polygon) {
-        stroke: #e6a817;
+    .svg-container :global(.node.highlighted polygon),
+    .svg-container :global(.node.highlighted path) {
+        stroke: #007AFF;
         stroke-width: 3px;
+        fill: rgba(0, 122, 255, 0.15);
+    }
+    .svg-container :global(.node.highlighted text) {
+        fill: #007AFF;
+        font-weight: bold;
     }
 </style>

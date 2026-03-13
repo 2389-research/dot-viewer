@@ -69,6 +69,8 @@ async function ensureInit(): Promise<void> {
 	return initPromise;
 }
 
+// --- Primitive API (mirrors UniFFI exports 1:1) ---
+
 /**
  * Parse DOT source into a structured graph model.
  */
@@ -76,6 +78,61 @@ export async function parseDot(source: string): Promise<DotGraph> {
 	await ensureInit();
 	return parserModule.parseDot(source) as DotGraph;
 }
+
+/**
+ * Find the statement containing the given character offset.
+ */
+export async function statementAt(
+	source: string,
+	offset: number,
+): Promise<DotStatement | null> {
+	await ensureInit();
+	const result = parserModule.statementAt(source, offset);
+	return result as DotStatement | null;
+}
+
+/**
+ * Returns the node ID relevant to a given cursor offset within a statement.
+ * For node definitions, always returns the node ID.
+ * For edges, returns whichever node the cursor is closest to.
+ */
+export async function nodeIdAt(
+	source: string,
+	statementOffset: number,
+	cursorOffset: number,
+): Promise<string | undefined> {
+	await ensureInit();
+	return parserModule.nodeIdAt(source, statementOffset, cursorOffset);
+}
+
+/**
+ * Find the first node definition for a given node ID, falling back to
+ * any edge referencing it.
+ */
+export async function definitionForNode(
+	source: string,
+	nodeId: string,
+): Promise<DotStatement | null> {
+	await ensureInit();
+	const result = parserModule.definitionForNode(source, nodeId);
+	return result as DotStatement | null;
+}
+
+/**
+ * Find the source range for the definition of a given node ID.
+ */
+export async function definitionRangeForNode(
+	source: string,
+	nodeId: string,
+): Promise<SourceRange | undefined> {
+	await ensureInit();
+	const result: Uint32Array | undefined =
+		parserModule.definitionRangeForNode(source, nodeId);
+	if (!result) return undefined;
+	return { location: result[0], length: result[1] };
+}
+
+// --- Convenience API (composed from primitives) ---
 
 /**
  * Render DOT source to SVG using the Graphviz WASM engine.
@@ -91,23 +148,15 @@ export async function renderDot(
 /**
  * Returns the node ID at the given cursor offset in the DOT source,
  * or undefined if the offset is not within a node reference.
+ * Convenience wrapper that combines statementAt + nodeIdAt.
  */
 export async function nodeIdAtOffset(
 	source: string,
 	offset: number,
 ): Promise<string | undefined> {
 	await ensureInit();
-	return parserModule.nodeIdAtOffset(source, offset);
-}
-
-/**
- * Returns the source offset of the definition for a given node ID,
- * or undefined if the node is not found.
- */
-export async function definitionOffsetForNode(
-	source: string,
-	nodeId: string,
-): Promise<number | undefined> {
-	await ensureInit();
-	return parserModule.definitionOffsetForNode(source, nodeId);
+	const stmt = parserModule.statementAt(source, offset);
+	if (!stmt || stmt === null) return undefined;
+	const stmtObj = stmt as DotStatement;
+	return parserModule.nodeIdAt(source, stmtObj.source_range.location, offset);
 }

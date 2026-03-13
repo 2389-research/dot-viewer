@@ -28,3 +28,9 @@ pub fn node_id_at(statement: &DotStatement, offset: u32) -> Option<String> {
 pub fn definition_for_node(graph: &DotGraph, node_id: String) -> Option<DotStatement> {
     dot_parser::definition_for_node(graph, &node_id).cloned()
 }
+
+/// Find the source range for the definition of a given node ID.
+#[uniffi::export]
+pub fn definition_range_for_node(graph: &DotGraph, node_id: String) -> Option<SourceRange> {
+    dot_parser::definition_range_for_node(graph, &node_id)
+}

@@ -413,6 +413,12 @@ pub fn definition_for_node<'a>(graph: &'a DotGraph, node_id: &str) -> Option<&'a
     None
 }
 
+/// Find the source range for the definition of a given node ID.
+/// Convenience wrapper around `definition_for_node` that returns just the range.
+pub fn definition_range_for_node(graph: &DotGraph, node_id: &str) -> Option<SourceRange> {
+    definition_for_node(graph, node_id).map(|stmt| stmt.source_range().clone())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -670,5 +676,38 @@ mod tests {
         let attr = graph_attr.unwrap();
         let range = attr.source_range();
         assert!(node_id_at(attr, range.location).is_none());
+    }
+
+    #[test]
+    fn test_definition_range_for_node_returns_full_range() {
+        let dot = "digraph G {\n  A [\n    shape=box\n  ];\n  A -> B\n}";
+        let graph = parse_dot(dot);
+        let range = definition_range_for_node(&graph, "A");
+        assert!(range.is_some());
+        let range = range.unwrap();
+        let slice = &dot[range.location as usize..(range.location + range.length) as usize];
+        assert!(slice.starts_with("A"), "slice was: {:?}", slice);
+        assert!(slice.contains("shape=box"), "slice was: {:?}", slice);
+        // The range covers the full multi-line node definition
+        assert!(slice.contains("]"), "slice was: {:?}", slice);
+    }
+
+    #[test]
+    fn test_definition_range_for_node_returns_none_for_unknown() {
+        let dot = "digraph G { A -> B }";
+        let graph = parse_dot(dot);
+        assert!(definition_range_for_node(&graph, "Z").is_none());
+    }
+
+    #[test]
+    fn test_definition_range_for_node_falls_back_to_edge() {
+        let dot = "digraph G { A -> B }";
+        let graph = parse_dot(dot);
+        let range = definition_range_for_node(&graph, "B");
+        assert!(range.is_some());
+        let range = range.unwrap();
+        let slice = &dot[range.location as usize..(range.location + range.length) as usize];
+        assert!(slice.contains("->"));
+        assert!(slice.contains("B"));
     }
 }
