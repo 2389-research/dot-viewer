@@ -50,7 +50,7 @@
         hidden
     />
     <label class="wrap-toggle">
-        <input type="checkbox" checked={wrap} onchange={() => onwrapchange?.(!wrap)} />
+        <input type="checkbox" checked={wrap} onchange={(e) => onwrapchange?.((e.currentTarget as HTMLInputElement).checked)} />
         Wrap
     </label>
     <label>

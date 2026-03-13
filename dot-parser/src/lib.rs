@@ -283,6 +283,7 @@ pub fn parse_dot(source: &str) -> DotGraph {
             continue;
         }
 
+        let first_id_was_quoted = bytes[i] == b'"';
         let (first_id, first_id_range, after_first) = extract_identifier(bytes, i);
         let first_id = match first_id {
             Some(id) => id,
@@ -292,10 +293,10 @@ pub fn parse_dot(source: &str) -> DotGraph {
             }
         };
 
-        // Check if this is a keyword
+        // Check if this is a keyword (only unquoted identifiers can be keywords)
         let keyword_lower = first_id.to_ascii_lowercase();
 
-        if attribute_keywords.contains(&keyword_lower.as_str()) {
+        if !first_id_was_quoted && attribute_keywords.contains(&keyword_lower.as_str()) {
             // These can have attribute lists: `graph [rankdir=LR]`
             let stmt_end = find_statement_end(bytes, stmt_start);
             let range = SourceRange {
@@ -307,7 +308,7 @@ pub fn parse_dot(source: &str) -> DotGraph {
             continue;
         }
 
-        if skip_keywords.contains(&keyword_lower.as_str()) {
+        if !first_id_was_quoted && skip_keywords.contains(&keyword_lower.as_str()) {
             // digraph, subgraph, strict — skip to the brace or end
             i = find_statement_end(bytes, after_first);
             continue;
@@ -709,5 +710,18 @@ mod tests {
         let slice = &dot[range.location as usize..(range.location + range.length) as usize];
         assert!(slice.contains("->"));
         assert!(slice.contains("B"));
+    }
+
+    #[test]
+    fn test_quoted_keyword_treated_as_identifier() {
+        // Quoted "graph" should be a node ID, not a keyword
+        let dot = r#"digraph G { "graph" -> A }"#;
+        let graph = parse_dot(dot);
+        let edges: Vec<_> = graph.statements.iter().filter(|s| matches!(s, DotStatement::Edge { .. })).collect();
+        assert_eq!(edges.len(), 1, "quoted keyword should parse as edge, not attribute");
+        if let DotStatement::Edge { from, to, .. } = edges[0] {
+            assert_eq!(from, "graph");
+            assert_eq!(to, "A");
+        }
     }
 }

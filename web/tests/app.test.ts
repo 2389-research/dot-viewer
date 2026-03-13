@@ -30,7 +30,7 @@ test('editor accepts text input and re-renders', async ({ page }) => {
     await page.waitForSelector('.svg-container svg', { timeout: 10000 });
     const editor = page.locator('.cm-editor .cm-content');
     await editor.click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.type('digraph T { X -> Y }');
     await page.waitForTimeout(500);
     const svg = page.locator('.svg-container svg');
@@ -54,7 +54,7 @@ test('invalid DOT shows error bar', async ({ page }) => {
     await page.goto('/');
     const editor = page.locator('.cm-editor .cm-content');
     await editor.click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.type('not valid dot {{{');
     await page.waitForTimeout(500);
     await expect(page.locator('.error-bar')).toBeVisible();

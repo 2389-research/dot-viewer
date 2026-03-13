@@ -60,11 +60,13 @@ async function ensureInit(): Promise<void> {
 
 		// Initialize the dot-core WASM parser
 		await parser.default();
+		const graphviz = await graphvizModule.Graphviz.load();
 		parserModule = parser;
-
-		// Initialize the Graphviz renderer
-		graphvizInstance = await graphvizModule.Graphviz.load();
-	})();
+		graphvizInstance = graphviz;
+	})().catch((error) => {
+		initPromise = null;
+		throw error;
+	});
 
 	return initPromise;
 }

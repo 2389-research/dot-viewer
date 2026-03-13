@@ -19,6 +19,7 @@
     let editor: Editor;
 
     let renderGeneration = 0;
+    let interactionGeneration = 0;
 
     onMount(async () => {
         await render(currentSource);
@@ -51,19 +52,24 @@
     }
 
     async function handleNodeClick(nodeId: string) {
+        const generation = ++interactionGeneration;
+        const source = currentSource;
         highlightedNode = nodeId;
-        const range = await definitionRangeForNode(currentSource, nodeId);
-        if (range) {
+        const range = await definitionRangeForNode(source, nodeId);
+        if (generation === interactionGeneration && range) {
             editor.highlightRange(range.location, range.location + range.length);
         }
     }
 
     async function handleCursorChange(offset: number) {
-        const nodeId = await nodeIdAtOffset(currentSource, offset);
+        const generation = ++interactionGeneration;
+        const source = currentSource;
+        const nodeId = await nodeIdAtOffset(source, offset);
+        if (generation !== interactionGeneration) return;
         highlightedNode = nodeId;
         if (nodeId) {
-            const range = await definitionRangeForNode(currentSource, nodeId);
-            if (range) {
+            const range = await definitionRangeForNode(source, nodeId);
+            if (generation === interactionGeneration && range) {
                 editor.highlightRange(range.location, range.location + range.length);
             }
         } else {

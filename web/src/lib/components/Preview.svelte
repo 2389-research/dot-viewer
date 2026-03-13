@@ -131,7 +131,8 @@
         cursor: pointer;
     }
     .svg-container :global(.node ellipse),
-    .svg-container :global(.node polygon) {
+    .svg-container :global(.node polygon),
+    .svg-container :global(.node path) {
         pointer-events: all;
     }
     .svg-container :global(.node.highlighted ellipse),
