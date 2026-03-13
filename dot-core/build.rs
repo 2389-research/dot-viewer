@@ -5,6 +5,12 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    let target_arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    if target_arch == "wasm32" {
+        // Parser-only build — no C dependencies needed
+        return;
+    }
+
     // Homebrew bison and flex are keg-only on macOS, so we must
     // point CMake at them explicitly.
     let homebrew_prefix = std::process::Command::new("brew")

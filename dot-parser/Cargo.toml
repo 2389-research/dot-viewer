@@ -1,0 +1,16 @@
+# ABOUTME: Cargo manifest for the shared DOT parser library.
+# ABOUTME: Feature flags control UniFFI or serde derive macros on types.
+
+[package]
+name = "dot-parser"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+uniffi = ["dep:uniffi"]
+serde = ["dep:serde"]
+
+[dependencies]
+uniffi = { version = "0.30", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }

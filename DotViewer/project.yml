@@ -22,6 +22,8 @@ targets:
           - "Generated/include/**"
           - "Generated/dot_coreFFI.h"
           - "Generated/dot_coreFFI.modulemap"
+          - "Generated/dot_parserFFI.h"
+          - "Generated/dot_parserFFI.modulemap"
     dependencies:
       - package: Sparkle
     settings:
