@@ -3,6 +3,7 @@
 
 mod grid;
 mod plain;
+mod render;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
