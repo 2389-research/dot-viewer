@@ -2,12 +2,13 @@
 // ABOUTME: Converts PlainGraph nodes and edges into grid-aligned structs for terminal rendering.
 
 use crate::plain::{PlainEdge, PlainGraph, PlainNode};
+use std::collections::HashMap;
 
 /// Horizontal scale: characters per Graphviz inch.
 const X_SCALE: f64 = 8.0;
 
 /// Vertical scale: characters per Graphviz inch (terminal chars are ~2x taller than wide).
-const Y_SCALE: f64 = 4.0;
+const Y_SCALE: f64 = 6.0;
 
 /// Padding cells added around the grid edges.
 const PADDING: usize = 2;
@@ -32,41 +33,67 @@ pub struct GridEdge {
     pub label: Option<String>,
 }
 
+/// Extra content to display inside a node beyond its label.
+pub struct NodeContent {
+    pub lines: Vec<String>,
+}
+
 /// Map a PlainGraph to grid-coordinate nodes and edges.
 /// Returns (nodes, edges, grid_width, grid_height).
-pub fn map_to_grid(graph: &PlainGraph) -> (Vec<GridNode>, Vec<GridEdge>, usize, usize) {
+/// `extra_content` provides additional lines per node for verbose display.
+pub fn map_to_grid(
+    graph: &PlainGraph,
+    extra_content: &std::collections::HashMap<String, NodeContent>,
+) -> (Vec<GridNode>, Vec<GridEdge>, usize, usize) {
     let grid_w = (graph.width * X_SCALE).ceil() as usize + PADDING * 2;
     let grid_h = (graph.height * Y_SCALE).ceil() as usize + PADDING * 2;
 
-    let nodes = graph
+    let nodes: Vec<GridNode> = graph
         .nodes
         .iter()
-        .map(|n| map_node(n, graph.height))
+        .map(|n| {
+            let content = extra_content.get(&n.name);
+            let extra_lines = content.map_or(0, |c| c.lines.len());
+            let max_line_width = content.map_or(0, |c| c.lines.iter().map(|l| l.len()).max().unwrap_or(0));
+            map_node(n, graph.height, extra_lines, max_line_width)
+        })
         .collect();
 
-    let edges = graph
+    let edges: Vec<GridEdge> = graph
         .edges
         .iter()
         .map(|e| map_edge(e, graph.height))
         .collect();
 
-    (nodes, edges, grid_w, grid_h)
+    // Expand grid to fit all nodes (verbose mode may make nodes wider than Graphviz expects).
+    let mut actual_w: usize = grid_w;
+    let mut actual_h: usize = grid_h;
+    for n in &nodes {
+        actual_w = actual_w.max(n.col + n.width + PADDING);
+        actual_h = actual_h.max(n.row + n.height + PADDING);
+    }
+
+    (nodes, edges, actual_w, actual_h)
 }
 
 /// Convert a PlainNode to a GridNode by scaling coordinates and flipping y.
-fn map_node(node: &PlainNode, graph_height: f64) -> GridNode {
+/// `extra_lines` adds rows for verbose attribute display.
+/// `extra_width` is the max width of extra content lines.
+fn map_node(node: &PlainNode, graph_height: f64, extra_lines: usize, extra_width: usize) -> GridNode {
     let center_col = (node.x * X_SCALE).round() as usize + PADDING;
     let center_row = ((graph_height - node.y) * Y_SCALE).round() as usize + PADDING;
 
     let scaled_w = (node.width * X_SCALE).round() as usize;
     let scaled_h = (node.height * Y_SCALE).round() as usize;
 
-    // Minimum width: label + "| " + " |" = label.len() + 4
-    let min_width = node.label.len() + 4;
+    // Minimum width: max of label and extra content lines, plus border padding
+    let content_width = node.label.len().max(extra_width);
+    let min_width = content_width + 4; // "│ " + content + " │"
     let width = scaled_w.max(min_width);
 
-    // Minimum height: top border + content + bottom border
-    let height = scaled_h.max(3);
+    // Minimum height: top border + label + extra attribute lines + bottom border
+    let min_height = 3 + extra_lines;
+    let height = scaled_h.max(min_height);
 
     // Top-left corner from center
     let col = center_col.saturating_sub(width / 2);
@@ -83,8 +110,9 @@ fn map_node(node: &PlainNode, graph_height: f64) -> GridNode {
 }
 
 /// Convert a PlainEdge to a GridEdge by scaling and flipping each waypoint.
+/// Deduplicates consecutive identical grid points that result from discretization.
 fn map_edge(edge: &PlainEdge, graph_height: f64) -> GridEdge {
-    let points = edge
+    let raw_points: Vec<(usize, usize)> = edge
         .points
         .iter()
         .map(|(x, y)| {
@@ -93,6 +121,14 @@ fn map_edge(edge: &PlainEdge, graph_height: f64) -> GridEdge {
             (col, row)
         })
         .collect();
+
+    // Deduplicate consecutive identical points from discretization.
+    let mut points = Vec::with_capacity(raw_points.len());
+    for p in &raw_points {
+        if points.last() != Some(p) {
+            points.push(*p);
+        }
+    }
 
     GridEdge {
         from: edge.from.clone(),
@@ -131,7 +167,7 @@ mod tests {
             ],
             edges: vec![],
         };
-        let (nodes, _, grid_w, grid_h) = map_to_grid(&graph);
+        let (nodes, _, grid_w, grid_h) = map_to_grid(&graph, &HashMap::new());
         assert_eq!(nodes.len(), 2);
         // Node a has higher y in graphviz = lower row in terminal (higher on screen)
         assert!(nodes[0].row < nodes[1].row, "a should be above b");
@@ -154,7 +190,7 @@ mod tests {
             }],
             edges: vec![],
         };
-        let (nodes, _, _, _) = map_to_grid(&graph);
+        let (nodes, _, _, _) = map_to_grid(&graph, &HashMap::new());
         // Node should be at least as wide as its label + border
         assert!(nodes[0].width >= 7); // "Hello" (5) + borders (2)
         assert!(nodes[0].height >= 3); // top + content + bottom
@@ -190,7 +226,7 @@ mod tests {
                 label: None,
             }],
         };
-        let (_, edges, _, _) = map_to_grid(&graph);
+        let (_, edges, _, _) = map_to_grid(&graph, &HashMap::new());
         assert_eq!(edges.len(), 1);
         assert!(edges[0].points.len() >= 2);
     }
@@ -210,7 +246,7 @@ mod tests {
             }],
             edges: vec![],
         };
-        let (nodes, _, _, _) = map_to_grid(&graph);
+        let (nodes, _, _, _) = map_to_grid(&graph, &HashMap::new());
         // y=4.0 in a height=4.0 graph means graphviz top -> terminal row near 0
         assert!(nodes[0].row <= PADDING + 1);
     }
@@ -223,10 +259,10 @@ mod tests {
             nodes: vec![],
             edges: vec![],
         };
-        let (_, _, grid_w, grid_h) = map_to_grid(&graph);
-        // 2.0 * 8 + 4 = 20, 3.0 * 4 + 4 = 16
+        let (_, _, grid_w, grid_h) = map_to_grid(&graph, &HashMap::new());
+        // 2.0 * 8 + 4 = 20, 3.0 * 6 + 4 = 22
         assert_eq!(grid_w, 20);
-        assert_eq!(grid_h, 16);
+        assert_eq!(grid_h, 22);
     }
 
     #[test]
@@ -242,7 +278,7 @@ mod tests {
                 label: Some("yes".into()),
             }],
         };
-        let (_, edges, _, _) = map_to_grid(&graph);
+        let (_, edges, _, _) = map_to_grid(&graph, &HashMap::new());
         assert_eq!(edges[0].label.as_deref(), Some("yes"));
     }
 }
