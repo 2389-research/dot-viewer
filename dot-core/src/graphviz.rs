@@ -1,5 +1,5 @@
 // ABOUTME: Safe Rust wrapper around the Graphviz C API (cgraph + gvc).
-// ABOUTME: Provides DOT-to-SVG rendering and DOT syntax validation.
+// ABOUTME: Provides DOT rendering (SVG, plain) and DOT syntax validation.
 
 #[allow(non_upper_case_globals)]
 #[allow(non_camel_case_types)]
@@ -40,15 +40,15 @@ fn engine_name(engine: &LayoutEngine) -> &'static str {
     }
 }
 
-/// Render DOT source to SVG using the specified layout engine.
-pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, DotError> {
+/// Render DOT source to a specified output format using the given layout engine.
+fn render_to_format(dot_source: &str, engine: &LayoutEngine, format: &str) -> Result<String, DotError> {
     let c_dot = CString::new(dot_source).map_err(|e| DotError::SyntaxError {
         message: format!("DOT source contains null byte: {}", e),
         line: 0,
         column: 0,
     })?;
     let c_engine = CString::new(engine_name(engine)).unwrap();
-    let c_svg = CString::new("svg").unwrap();
+    let c_format = CString::new(format).unwrap();
 
     let _lock = GRAPHVIZ_LOCK.lock().map_err(|e| DotError::RenderError {
         message: format!("failed to acquire Graphviz lock: {}", e),
@@ -93,7 +93,7 @@ pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, 
         let render_rc = gvRenderData(
             gvc,
             graph,
-            c_svg.as_ptr(),
+            c_format.as_ptr(),
             &mut result_ptr,
             &mut result_len,
         );
@@ -107,7 +107,7 @@ pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, 
             });
         }
 
-        let svg = CStr::from_ptr(result_ptr)
+        let output = CStr::from_ptr(result_ptr)
             .to_string_lossy()
             .into_owned();
 
@@ -118,8 +118,18 @@ pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, 
         agclose(graph);
         gvFreeContext(gvc);
 
-        Ok(svg)
+        Ok(output)
     }
+}
+
+/// Render DOT source to SVG using the specified layout engine.
+pub fn render_to_svg(dot_source: &str, engine: &LayoutEngine) -> Result<String, DotError> {
+    render_to_format(dot_source, engine, "svg")
+}
+
+/// Render DOT source to Graphviz plain text format using the specified layout engine.
+pub fn render_to_plain(dot_source: &str, engine: &LayoutEngine) -> Result<String, DotError> {
+    render_to_format(dot_source, engine, "plain")
 }
 
 /// Validate DOT syntax by attempting to parse it.
