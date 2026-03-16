@@ -13,6 +13,9 @@ const Y_SCALE: f64 = 6.0;
 /// Padding cells added around the grid edges.
 const PADDING: usize = 2;
 
+/// Maximum node width in characters (prevents verbose content from exploding boxes).
+const MAX_NODE_WIDTH: usize = 40;
+
 /// A node mapped to grid coordinates.
 #[derive(Debug, Clone)]
 pub struct GridNode {
@@ -86,10 +89,11 @@ fn map_node(node: &PlainNode, graph_height: f64, extra_lines: usize, extra_width
     let scaled_w = (node.width * X_SCALE).round() as usize;
     let scaled_h = (node.height * Y_SCALE).round() as usize;
 
-    // Minimum width: max of label and extra content lines, plus border padding
+    // Minimum width: max of label and extra content lines, plus border padding.
+    // Capped at MAX_NODE_WIDTH to prevent long attributes from exploding boxes.
     let content_width = node.label.len().max(extra_width);
-    let min_width = content_width + 4; // "│ " + content + " │"
-    let width = scaled_w.max(min_width);
+    let min_width = (content_width + 4).min(MAX_NODE_WIDTH); // "│ " + content + " │"
+    let width = scaled_w.max(min_width).min(MAX_NODE_WIDTH);
 
     // Minimum height: top border + label + extra attribute lines + bottom border
     let min_height = 3 + extra_lines;
@@ -109,26 +113,28 @@ fn map_node(node: &PlainNode, graph_height: f64, extra_lines: usize, extra_width
     }
 }
 
-/// Convert a PlainEdge to a GridEdge by scaling and flipping each waypoint.
-/// Deduplicates consecutive identical grid points that result from discretization.
+/// Convert a PlainEdge to a GridEdge by simplifying Bezier spline points
+/// to just the start and end positions. The renderer draws straight lines
+/// between these, which produces cleaner output than mapping every control point.
 fn map_edge(edge: &PlainEdge, graph_height: f64) -> GridEdge {
-    let raw_points: Vec<(usize, usize)> = edge
-        .points
-        .iter()
-        .map(|(x, y)| {
-            let col = (x * X_SCALE).round() as usize + PADDING;
-            let row = ((graph_height - y) * Y_SCALE).round() as usize + PADDING;
-            (col, row)
-        })
-        .collect();
+    let map_point = |(x, y): &(f64, f64)| -> (usize, usize) {
+        let col = (x * X_SCALE).round() as usize + PADDING;
+        let row = ((graph_height - y) * Y_SCALE).round() as usize + PADDING;
+        (col, row)
+    };
 
-    // Deduplicate consecutive identical points from discretization.
-    let mut points = Vec::with_capacity(raw_points.len());
-    for p in &raw_points {
-        if points.last() != Some(p) {
-            points.push(*p);
+    // Use only start and end of spline for clean straight-line routing.
+    let points = if edge.points.len() >= 2 {
+        let start = map_point(&edge.points[0]);
+        let end = map_point(edge.points.last().unwrap());
+        if start == end {
+            vec![start]
+        } else {
+            vec![start, end]
         }
-    }
+    } else {
+        edge.points.iter().map(|p| map_point(p)).collect()
+    };
 
     GridEdge {
         from: edge.from.clone(),

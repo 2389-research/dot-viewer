@@ -150,11 +150,8 @@ fn draw_edge(grid: &mut [Vec<char>], node_cells: &[Vec<bool>], edge: &GridEdge) 
         // At direction changes, draw corner characters.
         if i + 2 < points.len() {
             let (c3, r3) = points[i + 2];
-            let corner = pick_corner(c1, r1, c2, r2, c3, r3);
-            if let Some(ch) = corner {
-                if r2 < grid.len() && c2 < grid[0].len() && !node_cells[r2][c2] {
-                    grid[r2][c2] = ch;
-                }
+            if let Some(ch) = pick_corner(c1, r1, c2, r2, c3, r3) {
+                set_edge_cell(grid, node_cells, r2, c2, ch);
             }
         }
     }
@@ -172,13 +169,12 @@ fn draw_edge(grid: &mut [Vec<char>], node_cells: &[Vec<bool>], edge: &GridEdge) 
         } else {
             '◄'
         };
-        if rl < grid.len() && cl < grid[0].len() && !node_cells[rl][cl] {
-            grid[rl][cl] = arrow;
-        }
+        set_edge_cell(grid, node_cells, rl, cl, arrow);
     }
 }
 
-/// Draw a straight segment between two waypoints.
+/// Draw a segment between two waypoints. If not axis-aligned, routes as an
+/// L-shape: vertical first, then horizontal, with a corner character.
 fn draw_segment(
     grid: &mut [Vec<char>],
     node_cells: &[Vec<bool>],
@@ -191,20 +187,43 @@ fn draw_segment(
         // Vertical segment
         let (rmin, rmax) = if r1 < r2 { (r1, r2) } else { (r2, r1) };
         for r in rmin..=rmax {
-            if r < grid.len() && c1 < grid[0].len() && !node_cells[r][c1] {
-                grid[r][c1] = '│';
-            }
+            set_edge_cell(grid, node_cells, r, c1, '│');
         }
     } else if r1 == r2 {
         // Horizontal segment
         let (cmin, cmax) = if c1 < c2 { (c1, c2) } else { (c2, c1) };
         for c in cmin..=cmax {
-            if r1 < grid.len() && c < grid[0].len() && !node_cells[r1][c] {
-                grid[r1][c] = '─';
-            }
+            set_edge_cell(grid, node_cells, r1, c, '─');
         }
+    } else {
+        // L-shaped routing: go vertical first, then horizontal.
+        let (rmin, rmax) = if r1 < r2 { (r1, r2) } else { (r2, r1) };
+        for r in rmin..=rmax {
+            set_edge_cell(grid, node_cells, r, c1, '│');
+        }
+        let (cmin, cmax) = if c1 < c2 { (c1, c2) } else { (c2, c1) };
+        for c in cmin..=cmax {
+            set_edge_cell(grid, node_cells, r2, c, '─');
+        }
+        // Corner at the bend
+        let corner = if (r2 > r1 && c2 > c1) {
+            '└'
+        } else if (r2 > r1 && c2 < c1) {
+            '┘'
+        } else if (r2 < r1 && c2 > c1) {
+            '┌'
+        } else {
+            '┐'
+        };
+        set_edge_cell(grid, node_cells, r2, c1, corner);
     }
-    // Diagonal segments are not supported; they would need Bresenham's.
+}
+
+/// Set an edge cell if within bounds and not occupied by a node.
+fn set_edge_cell(grid: &mut [Vec<char>], node_cells: &[Vec<bool>], row: usize, col: usize, ch: char) {
+    if row < grid.len() && col < grid[0].len() && !node_cells[row][col] {
+        grid[row][col] = ch;
+    }
 }
 
 /// Pick a corner character at a waypoint where direction changes.
