@@ -64,10 +64,17 @@
         fill: #007AFF !important;
     }
 
-    /* Clickable node cursor */
+    /* Clickable node cursor and full-shape click targets */
     #container svg .node,
     #container svg .edge {
         cursor: pointer;
+    }
+    #container svg .node ellipse,
+    #container svg .node polygon,
+    #container svg .node path,
+    #container svg .edge path,
+    #container svg .edge polygon {
+        pointer-events: all;
     }
 
     #error {

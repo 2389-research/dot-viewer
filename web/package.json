@@ -1,0 +1,34 @@
+{
+	"name": "web",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.58.2",
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.50.2",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"svelte": "^5.51.0",
+		"svelte-check": "^4.4.2",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1"
+	},
+	"dependencies": {
+		"@codemirror/commands": "^6.10.3",
+		"@codemirror/language": "^6.12.2",
+		"@codemirror/state": "^6.6.0",
+		"@codemirror/view": "^6.40.0",
+		"@hpcc-js/wasm-graphviz": "^1.21.1",
+		"codemirror": "^6.0.2",
+		"dot-core-wasm": "file:../dot-core-wasm/pkg",
+		"panzoom": "^9.4.3"
+	}
+}

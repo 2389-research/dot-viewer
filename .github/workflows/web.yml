@@ -1,0 +1,47 @@
+# ABOUTME: CI workflow for the Dot Viewer web app.
+# ABOUTME: Builds WASM parser module and runs Playwright E2E tests.
+
+name: Web Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build WASM module
+        run: cd dot-core-wasm && wasm-pack build --target web --release
+
+      - name: Install web dependencies
+        run: cd web && npm install
+
+      - name: Type check
+        run: cd web && npx svelte-check --tsconfig ./tsconfig.json
+
+      - name: Build web app
+        run: cd web && npm run build
+
+      - name: Install Playwright
+        run: cd web && npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: cd web && npx playwright test
