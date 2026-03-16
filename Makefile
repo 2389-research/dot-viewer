@@ -1,7 +1,7 @@
 # ABOUTME: Top-level build orchestration for the dot-viewer project.
 # ABOUTME: Coordinates Rust library build, Swift binding generation, Xcode build, and web app build.
 
-.PHONY: all build-core generate-bindings build-app clean build-wasm web-install web-dev web-build web-test
+.PHONY: all build-core generate-bindings build-app clean build-wasm web-install web-dev web-build web-test build-cli test-cli install-cli
 
 all: build-app
 
@@ -31,6 +31,15 @@ web-build: web-install
 
 web-test: web-build
 	cd web && npx playwright test
+
+build-cli:
+	cd dot-viewer-cli && cargo build --release
+
+test-cli:
+	cd dot-viewer-cli && cargo test
+
+install-cli:
+	cd dot-viewer-cli && cargo install --path .
 
 clean:
 	cd dot-core && cargo clean
