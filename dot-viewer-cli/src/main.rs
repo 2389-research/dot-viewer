@@ -1,6 +1,7 @@
 // ABOUTME: CLI entry point for dot-viewer, providing ASCII rendering of DOT files.
 // ABOUTME: Uses Graphviz for layout and dot-parser for attribute extraction.
 
+mod grid;
 mod plain;
 
 use clap::{Parser, Subcommand};
