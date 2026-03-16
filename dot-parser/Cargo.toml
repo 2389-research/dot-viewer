@@ -8,6 +8,7 @@ edition = "2021"
 
 [features]
 default = []
+attributes = []
 uniffi = ["dep:uniffi"]
 serde = ["dep:serde"]
 

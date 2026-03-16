@@ -22,6 +22,9 @@ pub enum DotStatement {
     NodeDefinition {
         id: String,
         source_range: SourceRange,
+        #[cfg(feature = "attributes")]
+        #[cfg_attr(feature = "serde", serde(default))]
+        attributes: Vec<(String, String)>,
     },
     Edge {
         from: String,
@@ -29,9 +32,15 @@ pub enum DotStatement {
         source_range: SourceRange,
         from_range: SourceRange,
         to_range: SourceRange,
+        #[cfg(feature = "attributes")]
+        #[cfg_attr(feature = "serde", serde(default))]
+        attributes: Vec<(String, String)>,
     },
     GraphAttribute {
         source_range: SourceRange,
+        #[cfg(feature = "attributes")]
+        #[cfg_attr(feature = "serde", serde(default))]
+        attributes: Vec<(String, String)>,
     },
 }
 
@@ -49,7 +58,7 @@ impl DotStatement {
         match self {
             DotStatement::NodeDefinition { source_range, .. } => source_range,
             DotStatement::Edge { source_range, .. } => source_range,
-            DotStatement::GraphAttribute { source_range } => source_range,
+            DotStatement::GraphAttribute { source_range, .. } => source_range,
         }
     }
 }
@@ -232,6 +241,103 @@ fn find_statement_end(bytes: &[u8], start: usize) -> usize {
     bytes.len()
 }
 
+/// Extract key=value pairs from the first `[...]` block found within the given byte range.
+/// Handles bare identifiers, double-quoted values, and angle-bracket-delimited HTML labels.
+#[cfg(feature = "attributes")]
+fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<(String, String)> {
+    let mut attrs = Vec::new();
+
+    // Find the opening bracket
+    let mut i = start;
+    while i < end && bytes[i] != b'[' {
+        i += 1;
+    }
+    if i >= end {
+        return attrs;
+    }
+    i += 1; // skip '['
+
+    while i < end {
+        // Skip whitespace, commas, and semicolons between pairs
+        while i < end && matches!(bytes[i], b' ' | b'\t' | b'\n' | b'\r' | b',' | b';') {
+            i += 1;
+        }
+        if i >= end || bytes[i] == b']' {
+            break;
+        }
+
+        // Extract the key (bare identifier)
+        let key_start = i;
+        while i < end && is_ident_char(bytes[i]) {
+            i += 1;
+        }
+        if i == key_start {
+            i += 1;
+            continue;
+        }
+        let key = String::from_utf8_lossy(&bytes[key_start..i]).to_string();
+
+        // Skip whitespace around '='
+        while i < end && matches!(bytes[i], b' ' | b'\t') {
+            i += 1;
+        }
+        if i >= end || bytes[i] != b'=' {
+            continue;
+        }
+        i += 1; // skip '='
+        while i < end && matches!(bytes[i], b' ' | b'\t') {
+            i += 1;
+        }
+        if i >= end {
+            break;
+        }
+
+        // Extract the value based on its delimiter
+        if bytes[i] == b'"' {
+            // Quoted value with escape handling
+            i += 1;
+            let mut buf = Vec::new();
+            while i < end && bytes[i] != b'"' {
+                if bytes[i] == b'\\' && i + 1 < end {
+                    i += 1; // skip backslash, take next char literally
+                }
+                buf.push(bytes[i]);
+                i += 1;
+            }
+            if i < end {
+                i += 1; // skip closing quote
+            }
+            attrs.push((key, String::from_utf8_lossy(&buf).to_string()));
+        } else if bytes[i] == b'<' {
+            // HTML label value — track angle bracket depth
+            let val_start = i;
+            let mut depth = 0;
+            while i < end {
+                if bytes[i] == b'<' {
+                    depth += 1;
+                } else if bytes[i] == b'>' {
+                    depth -= 1;
+                    if depth == 0 {
+                        i += 1;
+                        break;
+                    }
+                }
+                i += 1;
+            }
+            attrs.push((key, String::from_utf8_lossy(&bytes[val_start..i]).to_string()));
+        } else {
+            // Bare identifier value
+            let val_start = i;
+            while i < end && is_ident_char(bytes[i]) {
+                i += 1;
+            }
+            attrs.push((key, String::from_utf8_lossy(&bytes[val_start..i]).to_string()));
+        }
+    }
+
+    attrs
+}
+
 /// Parse DOT source text into a structured graph model with source ranges.
 pub fn parse_dot(source: &str) -> DotGraph {
     let bytes = source.as_bytes();
@@ -303,7 +409,11 @@ pub fn parse_dot(source: &str) -> DotGraph {
                 location: stmt_start as u32,
                 length: (stmt_end - stmt_start) as u32,
             };
-            statements.push(DotStatement::GraphAttribute { source_range: range });
+            statements.push(DotStatement::GraphAttribute {
+                source_range: range,
+                #[cfg(feature = "attributes")]
+                attributes: parse_attributes(bytes, stmt_start, stmt_end),
+            });
             i = stmt_end;
             continue;
         }
@@ -343,12 +453,16 @@ pub fn parse_dot(source: &str) -> DotGraph {
                         source_range: range,
                         from_range: first_id_range,
                         to_range: second_id_range,
+                        #[cfg(feature = "attributes")]
+                        attributes: parse_attributes(bytes, stmt_start, stmt_end),
                     });
                 } else {
                     // Malformed edge — treat as node definition
                     statements.push(DotStatement::NodeDefinition {
                         id: first_id,
                         source_range: range,
+                        #[cfg(feature = "attributes")]
+                        attributes: parse_attributes(bytes, stmt_start, stmt_end),
                     });
                 }
                 i = stmt_end;
@@ -365,6 +479,8 @@ pub fn parse_dot(source: &str) -> DotGraph {
         statements.push(DotStatement::NodeDefinition {
             id: first_id,
             source_range: range,
+            #[cfg(feature = "attributes")]
+            attributes: parse_attributes(bytes, stmt_start, stmt_end),
         });
         i = stmt_end;
     }
@@ -722,6 +838,88 @@ mod tests {
         if let DotStatement::Edge { from, to, .. } = edges[0] {
             assert_eq!(from, "graph");
             assert_eq!(to, "A");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_parse_node_attributes() {
+        let dot = r#"digraph G { A [shape=box label="Hello"] }"#;
+        let graph = parse_dot(dot);
+        let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "A"));
+        assert!(node.is_some());
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
+            assert!(attributes.iter().any(|(k, v)| k == "shape" && v == "box"));
+            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "Hello"));
+        } else {
+            panic!("expected NodeDefinition");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_parse_edge_attributes() {
+        let dot = r#"digraph G { A -> B [color=red style="dashed"] }"#;
+        let graph = parse_dot(dot);
+        let edge = graph.statements.iter().find(|s| matches!(s, DotStatement::Edge { .. }));
+        assert!(edge.is_some());
+        if let Some(DotStatement::Edge { attributes, .. }) = edge {
+            assert!(attributes.iter().any(|(k, v)| k == "color" && v == "red"));
+            assert!(attributes.iter().any(|(k, v)| k == "style" && v == "dashed"));
+        } else {
+            panic!("expected Edge");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_parse_graph_attributes() {
+        let dot = "digraph G { graph [rankdir=LR bgcolor=white] }";
+        let graph = parse_dot(dot);
+        let ga = graph.statements.iter().find(|s| matches!(s, DotStatement::GraphAttribute { .. }));
+        assert!(ga.is_some());
+        if let Some(DotStatement::GraphAttribute { attributes, .. }) = ga {
+            assert!(attributes.iter().any(|(k, v)| k == "rankdir" && v == "LR"));
+            assert!(attributes.iter().any(|(k, v)| k == "bgcolor" && v == "white"));
+        } else {
+            panic!("expected GraphAttribute");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_parse_no_attributes_gives_empty_vec() {
+        let dot = "digraph G { A }";
+        let graph = parse_dot(dot);
+        let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { .. }));
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
+            assert!(attributes.is_empty());
+        } else {
+            panic!("expected NodeDefinition");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_parse_escaped_quote_in_attribute_value() {
+        let dot = r#"digraph G { A [label="say \"hi\""] }"#;
+        let graph = parse_dot(dot);
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = graph.statements.first() {
+            assert!(attributes.iter().any(|(k, v)| k == "label" && v == r#"say "hi""#));
+        } else {
+            panic!("expected NodeDefinition");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_parse_html_label_attribute() {
+        let dot = r#"digraph G { A [label=<Hello<BR/>World>] }"#;
+        let graph = parse_dot(dot);
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = graph.statements.first() {
+            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "<Hello<BR/>World>"));
+        } else {
+            panic!("expected NodeDefinition");
         }
     }
 }
