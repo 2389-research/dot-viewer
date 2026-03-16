@@ -21,6 +21,7 @@ const MAX_NODE_WIDTH: usize = 40;
 pub struct GridNode {
     pub name: String,
     pub label: String,
+    pub shape: String,
     pub col: usize,
     pub row: usize,
     pub width: usize,
@@ -106,6 +107,7 @@ fn map_node(node: &PlainNode, graph_height: f64, extra_lines: usize, extra_width
     GridNode {
         name: node.name.clone(),
         label: node.label.clone(),
+        shape: node.shape.clone(),
         col,
         row,
         width,
@@ -161,6 +163,7 @@ mod tests {
                     width: 0.75,
                     height: 0.5,
                     label: "A".into(),
+                    shape: "ellipse".into(),
                 },
                 PlainNode {
                     name: "b".into(),
@@ -169,6 +172,7 @@ mod tests {
                     width: 0.75,
                     height: 0.5,
                     label: "B".into(),
+                    shape: "ellipse".into(),
                 },
             ],
             edges: vec![],
@@ -193,6 +197,7 @@ mod tests {
                 width: 1.0,
                 height: 0.5,
                 label: "Hello".into(),
+                shape: "ellipse".into(),
             }],
             edges: vec![],
         };
@@ -215,6 +220,7 @@ mod tests {
                     width: 0.75,
                     height: 0.5,
                     label: "A".into(),
+                    shape: "ellipse".into(),
                 },
                 PlainNode {
                     name: "b".into(),
@@ -223,6 +229,7 @@ mod tests {
                     width: 0.75,
                     height: 0.5,
                     label: "B".into(),
+                    shape: "ellipse".into(),
                 },
             ],
             edges: vec![PlainEdge {
@@ -249,6 +256,7 @@ mod tests {
                 width: 0.75,
                 height: 0.5,
                 label: "T".into(),
+                shape: "ellipse".into(),
             }],
             edges: vec![],
         };

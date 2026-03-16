@@ -47,7 +47,7 @@ pub fn render_ascii(
     trimmed.join("\n")
 }
 
-/// Draw a single node box onto the grid.
+/// Draw a single node onto the grid, using shape-appropriate rendering.
 fn draw_node(
     grid: &mut [Vec<char>],
     node_cells: &mut [Vec<bool>],
@@ -55,11 +55,6 @@ fn draw_node(
     attrs: &HashMap<String, Vec<Attribute>>,
     options: &RenderOptions,
 ) {
-    let col = node.col;
-    let row = node.row;
-    let w = node.width;
-    let h = node.height;
-
     // Collect content lines: label first, then attributes if verbose.
     let mut content_lines: Vec<String> = vec![node.label.clone()];
     if options.verbose {
@@ -70,6 +65,26 @@ fn draw_node(
         }
     }
 
+    match node.shape.as_str() {
+        "diamond" => draw_inline_node(grid, node_cells, node, &content_lines, '◇'),
+        "Mdiamond" => draw_inline_node(grid, node_cells, node, &content_lines, '◆'),
+        "Msquare" => draw_inline_node(grid, node_cells, node, &content_lines, '■'),
+        _ => draw_box_node(grid, node_cells, node, &content_lines),
+    }
+}
+
+/// Draw a node as a Unicode box with borders.
+fn draw_box_node(
+    grid: &mut [Vec<char>],
+    node_cells: &mut [Vec<bool>],
+    node: &GridNode,
+    content_lines: &[String],
+) {
+    let col = node.col;
+    let row = node.row;
+    let w = node.width;
+    let h = node.height;
+
     // Top border: ┌─────┐
     set_cell(grid, node_cells, row, col, '┌');
     for c in (col + 1)..(col + w - 1) {
@@ -78,39 +93,16 @@ fn draw_node(
     set_cell(grid, node_cells, row, col + w - 1, '┐');
 
     // Middle rows: │ content │
-    let inner_width = w.saturating_sub(2); // space between the two │ chars
+    let inner_width = w.saturating_sub(2);
     for r in (row + 1)..(row + h - 1) {
         set_cell(grid, node_cells, r, col, '│');
         set_cell(grid, node_cells, r, col + w - 1, '│');
-        // Fill interior with spaces
         for c in (col + 1)..(col + w - 1) {
             set_cell(grid, node_cells, r, c, ' ');
         }
     }
 
-    // Place content lines centered vertically and horizontally.
-    let available_rows = h.saturating_sub(2); // rows between top and bottom border
-    let start_content_row = row + 1 + available_rows.saturating_sub(content_lines.len()) / 2;
-    for (i, line) in content_lines.iter().enumerate() {
-        let r = start_content_row + i;
-        if r >= row + h - 1 {
-            break;
-        }
-        // Center horizontally within inner_width, with 1 cell padding on each side.
-        let usable = inner_width.saturating_sub(2); // subtract 1 space padding each side
-        let truncated: String = if line.len() > usable {
-            line.chars().take(usable).collect()
-        } else {
-            line.clone()
-        };
-        let left_pad = (usable.saturating_sub(truncated.len())) / 2;
-        for (ci, ch) in truncated.chars().enumerate() {
-            let c = col + 1 + 1 + left_pad + ci; // +1 border, +1 padding
-            if c < col + w - 1 {
-                set_cell(grid, node_cells, r, c, ch);
-            }
-        }
-    }
+    place_content(grid, node_cells, node, content_lines);
 
     // Bottom border: └─────┘
     set_cell(grid, node_cells, row + h - 1, col, '└');
@@ -118,6 +110,82 @@ fn draw_node(
         set_cell(grid, node_cells, row + h - 1, c, '─');
     }
     set_cell(grid, node_cells, row + h - 1, col + w - 1, '┘');
+}
+
+/// Draw a node as a shape symbol followed by inline label (no box borders).
+/// Used for diamond, Mdiamond, Msquare shapes.
+fn draw_inline_node(
+    grid: &mut [Vec<char>],
+    node_cells: &mut [Vec<bool>],
+    node: &GridNode,
+    content_lines: &[String],
+    symbol: char,
+) {
+    let col = node.col;
+    let row = node.row;
+    let w = node.width;
+    let h = node.height;
+
+    // Fill the node area with spaces so edges don't cross through.
+    for r in row..(row + h) {
+        for c in col..(col + w) {
+            set_cell(grid, node_cells, r, c, ' ');
+        }
+    }
+
+    // Place symbol at the left of the first content row.
+    let center_row = row + h / 2;
+    set_cell(grid, node_cells, center_row, col, symbol);
+
+    // Place label after the symbol.
+    let label = &content_lines[0];
+    let truncated: String = if label.len() + 2 > w {
+        label.chars().take(w.saturating_sub(2)).collect()
+    } else {
+        label.clone()
+    };
+    for (ci, ch) in truncated.chars().enumerate() {
+        let c = col + 2 + ci;
+        if c < col + w {
+            set_cell(grid, node_cells, center_row, c, ch);
+        }
+    }
+}
+
+/// Place content lines centered within a node's box area.
+fn place_content(
+    grid: &mut [Vec<char>],
+    node_cells: &mut [Vec<bool>],
+    node: &GridNode,
+    content_lines: &[String],
+) {
+    let col = node.col;
+    let row = node.row;
+    let w = node.width;
+    let h = node.height;
+    let inner_width = w.saturating_sub(2);
+
+    let available_rows = h.saturating_sub(2);
+    let start_content_row = row + 1 + available_rows.saturating_sub(content_lines.len()) / 2;
+    for (i, line) in content_lines.iter().enumerate() {
+        let r = start_content_row + i;
+        if r >= row + h - 1 {
+            break;
+        }
+        let usable = inner_width.saturating_sub(2);
+        let truncated: String = if line.len() > usable {
+            line.chars().take(usable).collect()
+        } else {
+            line.clone()
+        };
+        let left_pad = (usable.saturating_sub(truncated.len())) / 2;
+        for (ci, ch) in truncated.chars().enumerate() {
+            let c = col + 1 + 1 + left_pad + ci;
+            if c < col + w - 1 {
+                set_cell(grid, node_cells, r, c, ch);
+            }
+        }
+    }
 }
 
 /// Set a cell in the grid if within bounds, and mark it as a node cell.
@@ -277,6 +345,7 @@ mod tests {
         let nodes = vec![GridNode {
             name: "A".into(),
             label: "Hello".into(),
+            shape: "box".into(),
             col: 2,
             row: 1,
             width: 9,
@@ -304,6 +373,7 @@ mod tests {
             GridNode {
                 name: "a".into(),
                 label: "A".into(),
+                shape: "box".into(),
                 col: 5,
                 row: 0,
                 width: 5,
@@ -312,6 +382,7 @@ mod tests {
             GridNode {
                 name: "b".into(),
                 label: "B".into(),
+                shape: "box".into(),
                 col: 5,
                 row: 6,
                 width: 5,
@@ -343,6 +414,7 @@ mod tests {
         let nodes = vec![GridNode {
             name: "A".into(),
             label: "Hello".into(),
+            shape: "box".into(),
             col: 0,
             row: 0,
             width: 20,
@@ -416,6 +488,7 @@ mod tests {
         let nodes = vec![GridNode {
             name: "a".into(),
             label: "A".into(),
+            shape: "box".into(),
             col: 2,
             row: 0,
             width: 5,

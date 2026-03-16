@@ -9,6 +9,7 @@ pub struct PlainNode {
     pub width: f64,
     pub height: f64,
     pub label: String,
+    pub shape: String,
 }
 
 /// An edge from Graphviz plain format output.
@@ -130,6 +131,8 @@ pub fn parse_plain(input: &str) -> Result<PlainGraph, String> {
                 let w = parse_f64(&tokens[4], "node width")? * scale;
                 let h = parse_f64(&tokens[5], "node height")? * scale;
                 let label = tokens[6].clone();
+                // Shape is at index 8: name x y w h label style shape color fillcolor
+                let shape = tokens.get(8).cloned().unwrap_or_else(|| "box".to_string());
                 nodes.push(PlainNode {
                     name,
                     x,
@@ -137,6 +140,7 @@ pub fn parse_plain(input: &str) -> Result<PlainGraph, String> {
                     width: w,
                     height: h,
                     label,
+                    shape,
                 });
             }
             "edge" => {
