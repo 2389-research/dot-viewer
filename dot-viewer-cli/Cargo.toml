@@ -12,4 +12,5 @@ path = "src/main.rs"
 
 [dependencies]
 dot-core = { path = "../dot-core" }
+dot-parser = { path = "../dot-parser", features = ["attributes"] }
 clap = { version = "4", features = ["derive"] }

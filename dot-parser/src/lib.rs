@@ -13,6 +13,16 @@ pub struct SourceRange {
     pub length: u32,
 }
 
+/// A key-value attribute pair from a DOT `[...]` block.
+#[cfg(feature = "attributes")]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct Attribute {
+    pub key: String,
+    pub value: String,
+}
+
 /// A parsed DOT statement with source location tracking.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
@@ -24,7 +34,7 @@ pub enum DotStatement {
         source_range: SourceRange,
         #[cfg(feature = "attributes")]
         #[cfg_attr(feature = "serde", serde(default))]
-        attributes: Vec<(String, String)>,
+        attributes: Vec<Attribute>,
     },
     Edge {
         from: String,
@@ -34,13 +44,13 @@ pub enum DotStatement {
         to_range: SourceRange,
         #[cfg(feature = "attributes")]
         #[cfg_attr(feature = "serde", serde(default))]
-        attributes: Vec<(String, String)>,
+        attributes: Vec<Attribute>,
     },
     GraphAttribute {
         source_range: SourceRange,
         #[cfg(feature = "attributes")]
         #[cfg_attr(feature = "serde", serde(default))]
-        attributes: Vec<(String, String)>,
+        attributes: Vec<Attribute>,
     },
 }
 
@@ -244,7 +254,7 @@ fn find_statement_end(bytes: &[u8], start: usize) -> usize {
 /// Extract key=value pairs from the first `[...]` block found within the given byte range.
 /// Handles bare identifiers, double-quoted values, and angle-bracket-delimited HTML labels.
 #[cfg(feature = "attributes")]
-fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<(String, String)> {
+fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<Attribute> {
     let mut attrs = Vec::new();
 
     // Find the opening bracket
@@ -307,7 +317,7 @@ fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<(String, Stri
             if i < end {
                 i += 1; // skip closing quote
             }
-            attrs.push((key, String::from_utf8_lossy(&buf).to_string()));
+            attrs.push(Attribute { key, value: String::from_utf8_lossy(&buf).to_string() });
         } else if bytes[i] == b'<' {
             // HTML label value — track angle bracket depth
             let val_start = i;
@@ -324,14 +334,14 @@ fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<(String, Stri
                 }
                 i += 1;
             }
-            attrs.push((key, String::from_utf8_lossy(&bytes[val_start..i]).to_string()));
+            attrs.push(Attribute { key, value: String::from_utf8_lossy(&bytes[val_start..i]).to_string() });
         } else {
             // Bare identifier value
             let val_start = i;
             while i < end && is_ident_char(bytes[i]) {
                 i += 1;
             }
-            attrs.push((key, String::from_utf8_lossy(&bytes[val_start..i]).to_string()));
+            attrs.push(Attribute { key, value: String::from_utf8_lossy(&bytes[val_start..i]).to_string() });
         }
     }
 
@@ -849,8 +859,8 @@ mod tests {
         let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "A"));
         assert!(node.is_some());
         if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
-            assert!(attributes.iter().any(|(k, v)| k == "shape" && v == "box"));
-            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "Hello"));
+            assert!(attributes.iter().any(|a| a.key == "shape" && a.value == "box"));
+            assert!(attributes.iter().any(|a| a.key == "label" && a.value == "Hello"));
         } else {
             panic!("expected NodeDefinition");
         }
@@ -864,8 +874,8 @@ mod tests {
         let edge = graph.statements.iter().find(|s| matches!(s, DotStatement::Edge { .. }));
         assert!(edge.is_some());
         if let Some(DotStatement::Edge { attributes, .. }) = edge {
-            assert!(attributes.iter().any(|(k, v)| k == "color" && v == "red"));
-            assert!(attributes.iter().any(|(k, v)| k == "style" && v == "dashed"));
+            assert!(attributes.iter().any(|a| a.key == "color" && a.value == "red"));
+            assert!(attributes.iter().any(|a| a.key == "style" && a.value == "dashed"));
         } else {
             panic!("expected Edge");
         }
@@ -879,8 +889,8 @@ mod tests {
         let ga = graph.statements.iter().find(|s| matches!(s, DotStatement::GraphAttribute { .. }));
         assert!(ga.is_some());
         if let Some(DotStatement::GraphAttribute { attributes, .. }) = ga {
-            assert!(attributes.iter().any(|(k, v)| k == "rankdir" && v == "LR"));
-            assert!(attributes.iter().any(|(k, v)| k == "bgcolor" && v == "white"));
+            assert!(attributes.iter().any(|a| a.key == "rankdir" && a.value == "LR"));
+            assert!(attributes.iter().any(|a| a.key == "bgcolor" && a.value == "white"));
         } else {
             panic!("expected GraphAttribute");
         }
@@ -905,7 +915,7 @@ mod tests {
         let dot = r#"digraph G { A [label="say \"hi\""] }"#;
         let graph = parse_dot(dot);
         if let Some(DotStatement::NodeDefinition { attributes, .. }) = graph.statements.first() {
-            assert!(attributes.iter().any(|(k, v)| k == "label" && v == r#"say "hi""#));
+            assert!(attributes.iter().any(|a| a.key == "label" && a.value == r#"say "hi""#));
         } else {
             panic!("expected NodeDefinition");
         }
@@ -917,7 +927,7 @@ mod tests {
         let dot = r#"digraph G { A [label=<Hello<BR/>World>] }"#;
         let graph = parse_dot(dot);
         if let Some(DotStatement::NodeDefinition { attributes, .. }) = graph.statements.first() {
-            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "<Hello<BR/>World>"));
+            assert!(attributes.iter().any(|a| a.key == "label" && a.value == "<Hello<BR/>World>"));
         } else {
             panic!("expected NodeDefinition");
         }
@@ -946,9 +956,9 @@ mod tests {
         let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "A"));
         assert!(node.is_some());
         if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
-            assert!(attributes.iter().any(|(k, v)| k == "shape" && v == "box"));
-            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "Hello"));
-            assert!(attributes.iter().any(|(k, v)| k == "color" && v == "blue"));
+            assert!(attributes.iter().any(|a| a.key == "shape" && a.value == "box"));
+            assert!(attributes.iter().any(|a| a.key == "label" && a.value == "Hello"));
+            assert!(attributes.iter().any(|a| a.key == "color" && a.value == "blue"));
             assert_eq!(attributes.len(), 3);
         } else {
             panic!("expected NodeDefinition");
@@ -963,7 +973,7 @@ mod tests {
         let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "A"));
         assert!(node.is_some());
         if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
-            assert!(attributes.iter().any(|(k, v)| k == "label" && v == r#"say "hello""#));
+            assert!(attributes.iter().any(|a| a.key == "label" && a.value == r#"say "hello""#));
         } else {
             panic!("expected NodeDefinition");
         }
@@ -981,11 +991,11 @@ mod tests {
         let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "summarizer"));
         assert!(node.is_some(), "should find summarizer node");
         if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
-            assert!(attributes.iter().any(|(k, v)| k == "shape" && v == "box"));
-            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "Summarize Document"));
-            assert!(attributes.iter().any(|(k, v)| k == "llm_provider" && v == "openai"));
-            assert!(attributes.iter().any(|(k, v)| k == "llm_model" && v == "gpt-4o"));
-            assert!(attributes.iter().any(|(k, v)| k == "prompt" && v == "Summarize the following document in 3 bullet points."));
+            assert!(attributes.iter().any(|a| a.key == "shape" && a.value == "box"));
+            assert!(attributes.iter().any(|a| a.key == "label" && a.value == "Summarize Document"));
+            assert!(attributes.iter().any(|a| a.key == "llm_provider" && a.value == "openai"));
+            assert!(attributes.iter().any(|a| a.key == "llm_model" && a.value == "gpt-4o"));
+            assert!(attributes.iter().any(|a| a.key == "prompt" && a.value == "Summarize the following document in 3 bullet points."));
             assert_eq!(attributes.len(), 5);
         } else {
             panic!("expected NodeDefinition");
