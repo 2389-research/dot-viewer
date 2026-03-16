@@ -922,4 +922,73 @@ mod tests {
             panic!("expected NodeDefinition");
         }
     }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_node_without_attributes_has_empty_vec() {
+        // Nodes referenced only via edges should have empty attribute vecs
+        let dot = "digraph G { A -> B }";
+        let graph = parse_dot(dot);
+        let edge = graph.statements.iter().find(|s| matches!(s, DotStatement::Edge { .. }));
+        assert!(edge.is_some());
+        if let Some(DotStatement::Edge { attributes, .. }) = edge {
+            assert!(attributes.is_empty(), "edge without [] should have empty attributes");
+        } else {
+            panic!("expected Edge");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_multiline_node_attributes() {
+        let dot = "digraph G {\n    A [\n        shape=box\n        label=\"Hello\"\n        color=blue\n    ]\n}";
+        let graph = parse_dot(dot);
+        let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "A"));
+        assert!(node.is_some());
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
+            assert!(attributes.iter().any(|(k, v)| k == "shape" && v == "box"));
+            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "Hello"));
+            assert!(attributes.iter().any(|(k, v)| k == "color" && v == "blue"));
+            assert_eq!(attributes.len(), 3);
+        } else {
+            panic!("expected NodeDefinition");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_attribute_with_escaped_quotes() {
+        let dot = r#"digraph G { A [label="say \"hello\""] }"#;
+        let graph = parse_dot(dot);
+        let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "A"));
+        assert!(node.is_some());
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
+            assert!(attributes.iter().any(|(k, v)| k == "label" && v == r#"say "hello""#));
+        } else {
+            panic!("expected NodeDefinition");
+        }
+    }
+
+    #[cfg(feature = "attributes")]
+    #[test]
+    fn test_real_pipeline_node() {
+        // Mimics a realistic dotmaker pipeline node with multiple domain-specific attributes
+        let dot = r#"digraph pipeline {
+    summarizer [shape=box label="Summarize Document" llm_provider="openai" llm_model="gpt-4o" prompt="Summarize the following document in 3 bullet points."]
+    summarizer -> reviewer
+}"#;
+        let graph = parse_dot(dot);
+        let node = graph.statements.iter().find(|s| matches!(s, DotStatement::NodeDefinition { id, .. } if id == "summarizer"));
+        assert!(node.is_some(), "should find summarizer node");
+        if let Some(DotStatement::NodeDefinition { attributes, .. }) = node {
+            assert!(attributes.iter().any(|(k, v)| k == "shape" && v == "box"));
+            assert!(attributes.iter().any(|(k, v)| k == "label" && v == "Summarize Document"));
+            assert!(attributes.iter().any(|(k, v)| k == "llm_provider" && v == "openai"));
+            assert!(attributes.iter().any(|(k, v)| k == "llm_model" && v == "gpt-4o"));
+            assert!(attributes.iter().any(|(k, v)| k == "prompt" && v == "Summarize the following document in 3 bullet points."));
+            assert_eq!(attributes.len(), 5);
+        } else {
+            panic!("expected NodeDefinition");
+        }
+    }
 }
