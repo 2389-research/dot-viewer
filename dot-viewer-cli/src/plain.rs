@@ -186,8 +186,8 @@ pub fn parse_plain(input: &str) -> Result<PlainGraph, String> {
                 });
             }
             "stop" => break,
-            other => {
-                return Err(format!("unknown line type '{}'", other));
+            _ => {
+                // Skip unrecognized lines (Graphviz may emit additional metadata).
             }
         }
     }

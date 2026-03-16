@@ -43,7 +43,7 @@ pub struct NodeContent {
 /// `extra_content` provides additional lines per node for verbose display.
 pub fn map_to_grid(
     graph: &PlainGraph,
-    extra_content: &std::collections::HashMap<String, NodeContent>,
+    extra_content: &HashMap<String, NodeContent>,
 ) -> (Vec<GridNode>, Vec<GridEdge>, usize, usize) {
     let grid_w = (graph.width * X_SCALE).ceil() as usize + PADDING * 2;
     let grid_h = (graph.height * Y_SCALE).ceil() as usize + PADDING * 2;
