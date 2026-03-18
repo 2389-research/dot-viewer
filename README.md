@@ -27,12 +27,12 @@ A native SwiftUI app with a split-pane editor and live SVG preview.
 - **Undo/redo** — standard document undo support
 - **Error display** — inline error bar shows Graphviz rendering errors
 
-### CLI (`dot-viewer ascii`)
+### CLI (`dot-viewer`)
 
 Renders DOT files as Unicode box-drawing art in the terminal.
 
 ```
-$ dot-viewer ascii graph.dot
+$ dot-viewer graph.dot
       ┌───────┐
       │ start │
       └───────┘
@@ -113,9 +113,9 @@ make build-cli
 make install-cli
 
 # Usage
-dot-viewer ascii path/to/graph.dot
-dot-viewer ascii path/to/graph.dot -v           # verbose (show attributes)
-dot-viewer ascii path/to/graph.dot --engine fdp  # alternate layout engine
+dot-viewer path/to/graph.dot
+dot-viewer path/to/graph.dot -v           # verbose (show attributes)
+dot-viewer path/to/graph.dot --engine fdp  # alternate layout engine
 ```
 
 ### Web App

@@ -5,7 +5,7 @@ mod grid;
 mod plain;
 mod render;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use dot_core::{render_dot_plain, LayoutEngine};
 use dot_parser::{parse_dot, Attribute, DotStatement};
 use std::collections::HashMap;
@@ -16,28 +16,19 @@ use crate::plain::parse_plain;
 use crate::render::{render_ascii, RenderOptions};
 
 #[derive(Parser)]
-#[command(name = "dot-viewer", about = "View DOT graph files")]
+#[command(name = "dot-viewer", about = "Render DOT graph files as ASCII art in the terminal")]
 struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Render a DOT file as ASCII art
-    Ascii {
-        /// Path to the .dot file
-        file: PathBuf,
-        /// Show all node attributes
-        #[arg(short, long)]
-        verbose: bool,
-        /// Enable ANSI colors
-        #[arg(long)]
-        color: bool,
-        /// Graphviz layout engine
-        #[arg(long, default_value = "dot")]
-        engine: String,
-    },
+    /// Path to the .dot file
+    file: PathBuf,
+    /// Show all node attributes
+    #[arg(short, long)]
+    verbose: bool,
+    /// Enable ANSI colors
+    #[arg(long)]
+    color: bool,
+    /// Graphviz layout engine
+    #[arg(long, default_value = "dot")]
+    engine: String,
 }
 
 fn parse_engine(name: &str) -> LayoutEngine {
@@ -68,65 +59,60 @@ fn extract_node_attributes(source: &str) -> HashMap<String, Vec<Attribute>> {
 
 fn main() {
     let cli = Cli::parse();
-    match cli.command {
-        Commands::Ascii {
-            file,
-            verbose,
-            color,
-            engine,
-        } => {
-            let source = std::fs::read_to_string(&file).unwrap_or_else(|e| {
-                eprintln!("Error reading {}: {}", file.display(), e);
-                std::process::exit(1);
-            });
 
-            let layout_engine = parse_engine(&engine);
+    let source = std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
+        eprintln!("Error reading {}: {}", cli.file.display(), e);
+        std::process::exit(1);
+    });
 
-            // Get Graphviz plain format layout
-            let plain_output = render_dot_plain(source.clone(), layout_engine).unwrap_or_else(|e| {
-                eprintln!("Graphviz error: {:?}", e);
-                std::process::exit(1);
-            });
+    let layout_engine = parse_engine(&cli.engine);
 
-            // Parse plain format into positioned elements
-            let plain_graph = parse_plain(&plain_output).unwrap_or_else(|e| {
-                eprintln!("Plain format parse error: {}", e);
-                std::process::exit(1);
-            });
+    // Get Graphviz plain format layout
+    let plain_output = render_dot_plain(source.clone(), layout_engine).unwrap_or_else(|e| {
+        eprintln!("Graphviz error: {:?}", e);
+        std::process::exit(1);
+    });
 
-            // Extract attributes from DOT source
-            let node_attrs = extract_node_attributes(&source);
+    // Parse plain format into positioned elements
+    let plain_graph = parse_plain(&plain_output).unwrap_or_else(|e| {
+        eprintln!("Plain format parse error: {}", e);
+        std::process::exit(1);
+    });
 
-            // Build extra content for verbose mode
-            let extra_content: HashMap<String, NodeContent> = if verbose {
-                node_attrs
+    // Extract attributes from DOT source
+    let node_attrs = extract_node_attributes(&source);
+
+    // Build extra content for verbose mode
+    let extra_content: HashMap<String, NodeContent> = if cli.verbose {
+        node_attrs
+            .iter()
+            .map(|(id, attrs)| {
+                let lines = attrs
                     .iter()
-                    .map(|(id, attrs)| {
-                        let lines = attrs
-                            .iter()
-                            .map(|a| format!("{}: {}", a.key, a.value))
-                            .collect();
-                        (id.clone(), NodeContent { lines })
-                    })
-                    .collect()
-            } else {
-                HashMap::new()
-            };
+                    .map(|a| format!("{}: {}", a.key, a.value))
+                    .collect();
+                (id.clone(), NodeContent { lines })
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
 
-            // Map to character grid
-            let (nodes, edges, grid_w, grid_h) = map_to_grid(&plain_graph, &extra_content);
+    // Map to character grid
+    let (nodes, edges, grid_w, grid_h) = map_to_grid(&plain_graph, &extra_content);
 
-            // Render to ASCII
-            let output = render_ascii(
-                &nodes,
-                &edges,
-                grid_w,
-                grid_h,
-                &node_attrs,
-                &RenderOptions { verbose, color },
-            );
+    // Render to ASCII
+    let output = render_ascii(
+        &nodes,
+        &edges,
+        grid_w,
+        grid_h,
+        &node_attrs,
+        &RenderOptions {
+            verbose: cli.verbose,
+            color: cli.color,
+        },
+    );
 
-            print!("{}", output);
-        }
-    }
+    print!("{}", output);
 }

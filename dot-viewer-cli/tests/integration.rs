@@ -12,8 +12,7 @@ fn run_cli(args: &[&str], input_dot: &str) -> String {
     let tmp = std::env::temp_dir().join(format!("dot_viewer_test_{}_{}.dot", pid, unique_id));
     std::fs::write(&tmp, input_dot).unwrap();
 
-    let mut cmd_args = vec!["ascii"];
-    cmd_args.push(tmp.to_str().unwrap());
+    let mut cmd_args = vec![tmp.to_str().unwrap()];
     cmd_args.extend_from_slice(args);
 
     let output = Command::new(env!("CARGO_BIN_EXE_dot-viewer"))
