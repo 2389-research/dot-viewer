@@ -50,7 +50,7 @@ fn shape_icon(shape: &str) -> Option<char> {
         "cylinder" => Some('⌸'),
         "note" => Some('♪'),
         "tab" => Some('⊟'),
-        "folder" => Some('📁'),
+        "folder" => Some('⊟'),
         "box3d" | "component" => Some('☐'),
         "house" => Some('⌂'),
         "invhouse" => Some('⌂'),
@@ -165,7 +165,6 @@ fn draw_box_node(
     set_cell(grid, node_cells, row, col + w - 1, '┐');
 
     // Middle rows: │ content │
-    let inner_width = w.saturating_sub(2);
     for r in (row + 1)..(row + h - 1) {
         set_cell(grid, node_cells, r, col, '│');
         set_cell(grid, node_cells, r, col + w - 1, '│');
@@ -205,12 +204,14 @@ fn place_content(
             break;
         }
         let usable = inner_width.saturating_sub(2);
-        let truncated: String = if line.len() > usable {
+        let char_count = line.chars().count();
+        let truncated: String = if char_count > usable {
             line.chars().take(usable).collect()
         } else {
             line.clone()
         };
-        let left_pad = (usable.saturating_sub(truncated.len())) / 2;
+        let truncated_chars = truncated.chars().count();
+        let left_pad = (usable.saturating_sub(truncated_chars)) / 2;
         for (ci, ch) in truncated.chars().enumerate() {
             let c = col + 1 + 1 + left_pad + ci;
             if c < col + w - 1 {
@@ -306,11 +307,11 @@ fn draw_segment(
             set_edge_cell(grid, node_cells, r2, c, '─');
         }
         // Corner at the bend
-        let corner = if (r2 > r1 && c2 > c1) {
+        let corner = if r2 > r1 && c2 > c1 {
             '└'
-        } else if (r2 > r1 && c2 < c1) {
+        } else if r2 > r1 && c2 < c1 {
             '┘'
-        } else if (r2 < r1 && c2 > c1) {
+        } else if r2 < r1 && c2 > c1 {
             '┌'
         } else {
             '┐'
