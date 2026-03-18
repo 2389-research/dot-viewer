@@ -5,6 +5,78 @@ use crate::grid::{GridEdge, GridNode};
 use dot_parser::Attribute;
 use std::collections::HashMap;
 
+/// Map a Graphviz shape name to a Unicode icon character.
+/// Returns None for shapes that use the default box rendering with no icon.
+fn shape_icon(shape: &str) -> Option<char> {
+    match shape {
+        // Box variants — no icon needed, they render as boxes already.
+        "box" | "rect" | "rectangle" | "square" | "record" | "Mrecord" => None,
+
+        // Ellipse variants
+        "ellipse" | "oval" => Some('⬭'),
+        "circle" => Some('○'),
+        "doublecircle" => Some('◎'),
+        "point" => Some('●'),
+
+        // Diamond variants
+        "diamond" => Some('◇'),
+        "Mdiamond" => Some('◆'),
+
+        // Square variants
+        "Msquare" => Some('■'),
+        "plaintext" | "plain" | "none" => Some('☐'),
+
+        // Triangles
+        "triangle" => Some('△'),
+        "invtriangle" => Some('▽'),
+
+        // Trapezoids
+        "trapezium" => Some('⏢'),
+        "invtrapezium" => Some('⏥'),
+
+        // Parallelograms
+        "parallelogram" => Some('▱'),
+
+        // Polygons and stars
+        "pentagon" => Some('⬠'),
+        "hexagon" => Some('⬡'),
+        "septagon" | "heptagon" => Some('⬡'),
+        "octagon" => Some('⯃'),
+        "doubleoctagon" => Some('⯃'),
+        "tripleoctagon" => Some('⯃'),
+        "star" => Some('★'),
+
+        // Special shapes
+        "cylinder" => Some('⌸'),
+        "note" => Some('♪'),
+        "tab" => Some('⊟'),
+        "folder" => Some('📁'),
+        "box3d" | "component" => Some('☐'),
+        "house" => Some('⌂'),
+        "invhouse" => Some('⌂'),
+        "underline" => Some('_'),
+        "cds" => Some('▷'),
+        "lpromoter" => Some('◁'),
+        "rpromoter" => Some('▷'),
+        "assembly" => Some('⊞'),
+        "signature" => Some('✎'),
+        "insulator" => Some('⊘'),
+        "ribosite" => Some('◯'),
+        "rnastab" => Some('⊗'),
+        "proteasesite" => Some('✂'),
+        "proteinstab" => Some('⊕'),
+        "primersite" => Some('▹'),
+        "restrictionsite" => Some('▿'),
+        "fivepoverhang" | "threepoverhang" => Some('⌐'),
+        "noverhang" => Some('⊣'),
+        "larrow" => Some('◁'),
+        "rarrow" => Some('▷'),
+
+        // Unknown shapes get a generic marker.
+        _ => Some('◈'),
+    }
+}
+
 /// Rendering options.
 pub struct RenderOptions {
     pub verbose: bool,
@@ -55,8 +127,13 @@ fn draw_node(
     attrs: &HashMap<String, Vec<Attribute>>,
     options: &RenderOptions,
 ) {
-    // Collect content lines: label first, then attributes if verbose.
-    let mut content_lines: Vec<String> = vec![node.label.clone()];
+    // Build the label line, prefixed with a shape icon when the shape isn't a plain box.
+    let label_line = match shape_icon(&node.shape) {
+        Some(icon) => format!("{} {}", icon, node.label),
+        None => node.label.clone(),
+    };
+
+    let mut content_lines: Vec<String> = vec![label_line];
     if options.verbose {
         if let Some(node_attrs) = attrs.get(&node.name) {
             for attr in node_attrs {
@@ -65,12 +142,7 @@ fn draw_node(
         }
     }
 
-    match node.shape.as_str() {
-        "diamond" => draw_inline_node(grid, node_cells, node, &content_lines, '◇'),
-        "Mdiamond" => draw_inline_node(grid, node_cells, node, &content_lines, '◆'),
-        "Msquare" => draw_inline_node(grid, node_cells, node, &content_lines, '■'),
-        _ => draw_box_node(grid, node_cells, node, &content_lines),
-    }
+    draw_box_node(grid, node_cells, node, &content_lines);
 }
 
 /// Draw a node as a Unicode box with borders.
@@ -110,46 +182,6 @@ fn draw_box_node(
         set_cell(grid, node_cells, row + h - 1, c, '─');
     }
     set_cell(grid, node_cells, row + h - 1, col + w - 1, '┘');
-}
-
-/// Draw a node as a shape symbol followed by inline label (no box borders).
-/// Used for diamond, Mdiamond, Msquare shapes.
-fn draw_inline_node(
-    grid: &mut [Vec<char>],
-    node_cells: &mut [Vec<bool>],
-    node: &GridNode,
-    content_lines: &[String],
-    symbol: char,
-) {
-    let col = node.col;
-    let row = node.row;
-    let w = node.width;
-    let h = node.height;
-
-    // Fill the node area with spaces so edges don't cross through.
-    for r in row..(row + h) {
-        for c in col..(col + w) {
-            set_cell(grid, node_cells, r, c, ' ');
-        }
-    }
-
-    // Place symbol at the left of the first content row.
-    let center_row = row + h / 2;
-    set_cell(grid, node_cells, center_row, col, symbol);
-
-    // Place label after the symbol.
-    let label = &content_lines[0];
-    let truncated: String = if label.len() + 2 > w {
-        label.chars().take(w.saturating_sub(2)).collect()
-    } else {
-        label.clone()
-    };
-    for (ci, ch) in truncated.chars().enumerate() {
-        let c = col + 2 + ci;
-        if c < col + w {
-            set_cell(grid, node_cells, center_row, c, ch);
-        }
-    }
 }
 
 /// Place content lines centered within a node's box area.
@@ -481,6 +513,60 @@ mod tests {
         );
         // Edge going down should end with ▼
         assert!(output.contains('▼'));
+    }
+
+    #[test]
+    fn test_shape_icon_prefix_in_box() {
+        let nodes = vec![GridNode {
+            name: "start".into(),
+            label: "Start".into(),
+            shape: "diamond".into(),
+            col: 0,
+            row: 0,
+            width: 14,
+            height: 3,
+        }];
+        let output = render_ascii(
+            &nodes,
+            &[],
+            20,
+            5,
+            &HashMap::new(),
+            &RenderOptions {
+                verbose: false,
+                color: false,
+            },
+        );
+        // Diamond shape should render as a box with ◇ prefix.
+        assert!(output.contains("◇ Start"), "Should have icon prefix, got: {}", output);
+        assert!(output.contains("┌"), "Should be in a box");
+        assert!(output.contains("┘"), "Should be in a box");
+    }
+
+    #[test]
+    fn test_box_shape_has_no_icon() {
+        let nodes = vec![GridNode {
+            name: "a".into(),
+            label: "Hello".into(),
+            shape: "box".into(),
+            col: 0,
+            row: 0,
+            width: 12,
+            height: 3,
+        }];
+        let output = render_ascii(
+            &nodes,
+            &[],
+            15,
+            5,
+            &HashMap::new(),
+            &RenderOptions {
+                verbose: false,
+                color: false,
+            },
+        );
+        assert!(output.contains("Hello"), "Should contain label");
+        assert!(!output.contains("◇"), "Box shape should have no icon prefix");
     }
 
     #[test]

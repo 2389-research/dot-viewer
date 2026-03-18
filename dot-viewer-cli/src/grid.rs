@@ -42,6 +42,10 @@ pub struct NodeContent {
     pub lines: Vec<String>,
 }
 
+/// Minimum vertical gap (in rows) between nodes after overlap resolution.
+/// Provides space for edge arrows to be visible between boxes.
+const MIN_NODE_GAP: usize = 2;
+
 /// Map a PlainGraph to grid-coordinate nodes and edges.
 /// Returns (nodes, edges, grid_width, grid_height).
 /// `extra_content` provides additional lines per node for verbose display.
@@ -52,7 +56,7 @@ pub fn map_to_grid(
     let grid_w = (graph.width * X_SCALE).ceil() as usize + PADDING * 2;
     let grid_h = (graph.height * Y_SCALE).ceil() as usize + PADDING * 2;
 
-    let nodes: Vec<GridNode> = graph
+    let mut nodes: Vec<GridNode> = graph
         .nodes
         .iter()
         .map(|n| {
@@ -63,11 +67,19 @@ pub fn map_to_grid(
         })
         .collect();
 
-    let edges: Vec<GridEdge> = graph
+    let mut edges: Vec<GridEdge> = graph
         .edges
         .iter()
         .map(|e| map_edge(e, graph.height))
         .collect();
+
+    // Resolve vertical overlaps caused by verbose mode expanding node heights
+    // beyond what Graphviz allocated space for.
+    resolve_overlaps(&mut nodes);
+
+    // Snap edge endpoints to actual node boundaries so edges clearly connect
+    // to their source and target boxes.
+    snap_edges_to_nodes(&mut edges, &nodes);
 
     // Expand grid to fit all nodes (verbose mode may make nodes wider than Graphviz expects).
     let mut actual_w: usize = grid_w;
@@ -78,6 +90,99 @@ pub fn map_to_grid(
     }
 
     (nodes, edges, actual_w, actual_h)
+}
+
+/// Resolve vertical overlaps between nodes by shifting overlapping nodes down.
+fn resolve_overlaps(nodes: &mut [GridNode]) {
+    if nodes.len() < 2 {
+        return;
+    }
+
+    // Sort node indices by row (top to bottom), breaking ties by column.
+    let mut order: Vec<usize> = (0..nodes.len()).collect();
+    order.sort_by_key(|&i| (nodes[i].row, nodes[i].col));
+
+    // Walk top-to-bottom. For each node, check against all earlier nodes
+    // for vertical overlap (they might be side-by-side and not actually overlap).
+    for pass_idx in 1..order.len() {
+        let curr = order[pass_idx];
+        let mut max_needed_shift: usize = 0;
+
+        for prev_idx in 0..pass_idx {
+            let prev = order[prev_idx];
+
+            // Check horizontal overlap: do these nodes share any columns?
+            let prev_left = nodes[prev].col;
+            let prev_right = nodes[prev].col + nodes[prev].width;
+            let curr_left = nodes[curr].col;
+            let curr_right = nodes[curr].col + nodes[curr].width;
+
+            let h_overlap = prev_left < curr_right && curr_left < prev_right;
+            if !h_overlap {
+                continue;
+            }
+
+            // Check vertical overlap/closeness.
+            let prev_bottom = nodes[prev].row + nodes[prev].height;
+            let required_top = prev_bottom + MIN_NODE_GAP;
+
+            if nodes[curr].row < required_top {
+                let shift = required_top - nodes[curr].row;
+                max_needed_shift = max_needed_shift.max(shift);
+            }
+        }
+
+        if max_needed_shift > 0 {
+            nodes[curr].row += max_needed_shift;
+        }
+    }
+}
+
+/// Snap edge endpoints to actual node boundaries so edges clearly originate
+/// from the bottom of their source node and terminate at the top of their target.
+fn snap_edges_to_nodes(edges: &mut [GridEdge], nodes: &[GridNode]) {
+    let node_map: HashMap<&str, &GridNode> = nodes.iter().map(|n| (n.name.as_str(), n)).collect();
+
+    for edge in edges.iter_mut() {
+        if edge.points.is_empty() {
+            continue;
+        }
+
+        let from_node = node_map.get(edge.from.as_str());
+        let to_node = node_map.get(edge.to.as_str());
+
+        // Determine if this is a top-to-bottom or bottom-to-top edge based
+        // on relative node positions.
+        let from_above = match (from_node, to_node) {
+            (Some(f), Some(t)) => f.row <= t.row,
+            _ => true,
+        };
+
+        // Snap start point to the source node boundary.
+        if let Some(from) = from_node {
+            let col = from.col + from.width / 2;
+            let row = if from_above {
+                from.row + from.height // bottom edge
+            } else {
+                from.row.saturating_sub(1) // top edge
+            };
+            edge.points[0] = (col, row);
+        }
+
+        // Snap end point to the target node boundary.
+        if edge.points.len() >= 2 {
+            if let Some(to) = to_node {
+                let last = edge.points.len() - 1;
+                let col = to.col + to.width / 2;
+                let row = if from_above {
+                    to.row.saturating_sub(1) // top edge (arrow points down into node)
+                } else {
+                    to.row + to.height // bottom edge (arrow points up into node)
+                };
+                edge.points[last] = (col, row);
+            }
+        }
+    }
 }
 
 /// Convert a PlainNode to a GridNode by scaling coordinates and flipping y.
@@ -92,7 +197,12 @@ fn map_node(node: &PlainNode, graph_height: f64, extra_lines: usize, extra_width
 
     // Minimum width: max of label and extra content lines, plus border padding.
     // Capped at MAX_NODE_WIDTH to prevent long attributes from exploding boxes.
-    let content_width = node.label.len().max(extra_width);
+    // Non-box shapes get a 2-char icon prefix ("X ") rendered by the renderer.
+    let icon_width = match node.shape.as_str() {
+        "box" | "rect" | "rectangle" | "square" | "record" | "Mrecord" => 0,
+        _ => 2,
+    };
+    let content_width = (node.label.len() + icon_width).max(extra_width);
     let min_width = (content_width + 4).min(MAX_NODE_WIDTH); // "│ " + content + " │"
     let width = scaled_w.max(min_width).min(MAX_NODE_WIDTH);
 
@@ -277,6 +387,102 @@ mod tests {
         // 2.0 * 8 + 4 = 20, 3.0 * 6 + 4 = 22
         assert_eq!(grid_w, 20);
         assert_eq!(grid_h, 22);
+    }
+
+    #[test]
+    fn test_overlapping_nodes_resolved() {
+        // Two nodes positioned so close that with verbose content they'd overlap.
+        let graph = PlainGraph {
+            width: 2.0,
+            height: 2.0,
+            nodes: vec![
+                PlainNode {
+                    name: "a".into(),
+                    x: 1.0,
+                    y: 1.8,
+                    width: 0.75,
+                    height: 0.5,
+                    label: "A".into(),
+                    shape: "ellipse".into(),
+                },
+                PlainNode {
+                    name: "b".into(),
+                    x: 1.0,
+                    y: 1.2,
+                    width: 0.75,
+                    height: 0.5,
+                    label: "B".into(),
+                    shape: "ellipse".into(),
+                },
+            ],
+            edges: vec![],
+        };
+        // Give both nodes extra verbose content to make them tall.
+        let mut extra = HashMap::new();
+        extra.insert("a".into(), NodeContent {
+            lines: vec!["attr1: val1".into(), "attr2: val2".into(), "attr3: val3".into()],
+        });
+        extra.insert("b".into(), NodeContent {
+            lines: vec!["attr4: val4".into(), "attr5: val5".into()],
+        });
+        let (nodes, _, _, _) = map_to_grid(&graph, &extra);
+        // Node a should be above node b with no overlap.
+        let a = &nodes[0];
+        let b = &nodes[1];
+        let a_bottom = a.row + a.height;
+        assert!(
+            a_bottom + MIN_NODE_GAP <= b.row,
+            "Nodes should not overlap: a bottom {} + gap {} > b top {}",
+            a_bottom, MIN_NODE_GAP, b.row,
+        );
+    }
+
+    #[test]
+    fn test_edges_snap_to_node_boundaries() {
+        let graph = PlainGraph {
+            width: 2.0,
+            height: 4.0,
+            nodes: vec![
+                PlainNode {
+                    name: "a".into(),
+                    x: 1.0,
+                    y: 3.0,
+                    width: 0.75,
+                    height: 0.5,
+                    label: "A".into(),
+                    shape: "ellipse".into(),
+                },
+                PlainNode {
+                    name: "b".into(),
+                    x: 1.0,
+                    y: 1.0,
+                    width: 0.75,
+                    height: 0.5,
+                    label: "B".into(),
+                    shape: "ellipse".into(),
+                },
+            ],
+            edges: vec![PlainEdge {
+                from: "a".into(),
+                to: "b".into(),
+                points: vec![(1.0, 2.5), (1.0, 1.5)],
+                label: None,
+            }],
+        };
+        let (nodes, edges, _, _) = map_to_grid(&graph, &HashMap::new());
+        let a = &nodes[0];
+        let b = &nodes[1];
+        let edge = &edges[0];
+
+        // Start point should be at the bottom center of node a.
+        let (start_col, start_row) = edge.points[0];
+        assert_eq!(start_col, a.col + a.width / 2, "start col should be center of node a");
+        assert_eq!(start_row, a.row + a.height, "start row should be bottom of node a");
+
+        // End point should be just above node b (arrow row).
+        let (end_col, end_row) = edge.points[edge.points.len() - 1];
+        assert_eq!(end_col, b.col + b.width / 2, "end col should be center of node b");
+        assert_eq!(end_row, b.row.saturating_sub(1), "end row should be just above node b");
     }
 
     #[test]
