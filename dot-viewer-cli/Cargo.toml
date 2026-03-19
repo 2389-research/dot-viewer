@@ -1,0 +1,16 @@
+# ABOUTME: Cargo manifest for the dot-viewer CLI tool.
+# ABOUTME: Provides ASCII rendering of DOT files using Graphviz layout.
+
+[package]
+name = "dot-viewer-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "dot-viewer"
+path = "src/main.rs"
+
+[dependencies]
+dot-core = { path = "../dot-core" }
+dot-parser = { path = "../dot-parser", features = ["attributes"] }
+clap = { version = "4", features = ["derive"] }

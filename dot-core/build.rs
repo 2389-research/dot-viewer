@@ -130,6 +130,26 @@ fn main() {
     println!("cargo:rustc-link-lib=expat");
     println!("cargo:rustc-link-lib=z");
 
+    // GTS/glib — neatogen uses GTS for Delaunay triangulation if available at
+    // cmake configure time. Link the dynamic libraries so symbols resolve.
+    // Only link if GTS is actually installed (detected via pkg-config).
+    if std::process::Command::new("pkg-config")
+        .args(["--exists", "gts"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        println!("cargo:rustc-link-lib=gts");
+        println!("cargo:rustc-link-lib=glib-2.0");
+        println!("cargo:rustc-link-lib=gthread-2.0");
+        println!("cargo:rustc-link-lib=gmodule-2.0");
+        println!("cargo:rustc-link-lib=intl");
+        println!("cargo:rustc-link-search=native={}/opt/gts/lib", homebrew_prefix);
+        println!("cargo:rustc-link-search=native={}/opt/glib/lib", homebrew_prefix);
+        println!("cargo:rustc-link-search=native={}/opt/gettext/lib", homebrew_prefix);
+        println!("cargo:rustc-link-search=native={}/lib", homebrew_prefix);
+    }
+
     #[cfg(target_os = "macos")]
     println!("cargo:rustc-link-lib=c++");
     #[cfg(not(target_os = "macos"))]

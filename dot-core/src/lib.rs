@@ -1,5 +1,5 @@
 // ABOUTME: Public API for the dot-core library, exposed to Swift via UniFFI.
-// ABOUTME: Provides DOT parsing, validation, and SVG rendering via Graphviz.
+// ABOUTME: Provides DOT parsing, validation, and rendering (SVG, plain) via Graphviz.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod graphviz;
@@ -46,6 +46,12 @@ pub fn render_dot(dot_source: String, engine: LayoutEngine) -> Result<String, Do
 
 #[cfg(not(target_arch = "wasm32"))]
 #[uniffi::export]
+pub fn render_dot_plain(dot_source: String, engine: LayoutEngine) -> Result<String, DotError> {
+    graphviz::render_to_plain(&dot_source, &engine)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[uniffi::export]
 pub fn validate_dot(dot_source: String) -> Result<(), DotError> {
     graphviz::validate_syntax(&dot_source)
 }
@@ -83,5 +89,17 @@ mod tests {
     fn test_validate_invalid_dot() {
         let dot = "not valid {{{".to_string();
         assert!(validate_dot(dot).is_err());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_render_plain_format() {
+        let dot = "digraph { a -> b }".to_string();
+        let plain = render_dot_plain(dot, LayoutEngine::Dot).unwrap();
+        assert!(plain.starts_with("graph"));
+        assert!(plain.contains("node a"));
+        assert!(plain.contains("node b"));
+        assert!(plain.contains("edge a b"));
+        assert!(plain.contains("stop"));
     }
 }
