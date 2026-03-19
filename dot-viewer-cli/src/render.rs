@@ -228,7 +228,7 @@ fn set_cell(
     col: usize,
     ch: char,
 ) {
-    if row < grid.len() && col < grid[0].len() {
+    if row < grid.len() && !grid.is_empty() && col < grid[row].len() {
         grid[row][col] = ch;
         node_cells[row][col] = true;
     }
@@ -321,7 +321,7 @@ fn draw_segment(
 
 /// Set an edge cell if within bounds and not occupied by a node.
 fn set_edge_cell(grid: &mut [Vec<char>], node_cells: &[Vec<bool>], row: usize, col: usize, ch: char) {
-    if row < grid.len() && col < grid[0].len() && !node_cells[row][col] {
+    if row < grid.len() && !grid.is_empty() && col < grid[row].len() && !node_cells[row][col] {
         grid[row][col] = ch;
     }
 }

@@ -31,7 +31,7 @@ A native SwiftUI app with a split-pane editor and live SVG preview.
 
 Renders DOT files as Unicode box-drawing art in the terminal.
 
-```
+```text
 $ dot-viewer graph.dot
       ┌───────┐
       │ start │
@@ -59,7 +59,7 @@ A SvelteKit web editor with CodeMirror and in-browser Graphviz rendering via WAS
 
 ## Architecture
 
-```
+```text
 dot-core/          Rust library — Graphviz FFI (cgraph + gvc) via UniFFI bindings
 dot-parser/        Rust library — DOT language parser with attribute extraction
 dot-viewer-cli/    Rust CLI — ASCII rendering pipeline (plain format → grid → Unicode)
@@ -143,7 +143,7 @@ make web-test
 
 ## Project Structure
 
-```
+```text
 .github/workflows/    GitHub Actions release pipeline
 dot-core/             Rust library (Graphviz FFI + UniFFI bindings)
   build.rs            CMake build orchestration for vendored Graphviz
