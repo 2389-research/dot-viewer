@@ -23,9 +23,6 @@ struct Cli {
     /// Show all node attributes
     #[arg(short, long)]
     verbose: bool,
-    /// Enable ANSI colors
-    #[arg(long)]
-    color: bool,
     /// Graphviz layout engine
     #[arg(long, default_value = "dot")]
     engine: String,
@@ -110,7 +107,6 @@ fn main() {
         &node_attrs,
         &RenderOptions {
             verbose: cli.verbose,
-            color: cli.color,
         },
     );
 

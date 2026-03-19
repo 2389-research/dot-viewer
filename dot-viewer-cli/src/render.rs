@@ -80,7 +80,6 @@ fn shape_icon(shape: &str) -> Option<char> {
 /// Rendering options.
 pub struct RenderOptions {
     pub verbose: bool,
-    pub color: bool,
 }
 
 /// Render nodes and edges to a string of Unicode box-drawing characters.
@@ -390,10 +389,7 @@ mod tests {
             15,
             5,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         assert!(output.contains("Hello"));
         assert!(output.contains("┌"));
@@ -434,10 +430,7 @@ mod tests {
             15,
             10,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         assert!(output.contains('│') || output.contains('▼'));
     }
@@ -467,10 +460,7 @@ mod tests {
             25,
             7,
             &attrs,
-            &RenderOptions {
-                verbose: true,
-                color: false,
-            },
+            &RenderOptions { verbose: true },
         );
         assert!(output.contains("shape: box"));
     }
@@ -483,10 +473,7 @@ mod tests {
             5,
             5,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         // Empty grid should produce empty or whitespace-only output.
         assert!(output.trim().is_empty());
@@ -507,10 +494,7 @@ mod tests {
             8,
             6,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         // Edge going down should end with ▼
         assert!(output.contains('▼'));
@@ -533,10 +517,7 @@ mod tests {
             20,
             5,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         // Diamond shape should render as a box with ◇ prefix.
         assert!(output.contains("◇ Start"), "Should have icon prefix, got: {}", output);
@@ -561,10 +542,7 @@ mod tests {
             15,
             5,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         assert!(output.contains("Hello"), "Should contain label");
         assert!(!output.contains("◇"), "Box shape should have no icon prefix");
@@ -594,10 +572,7 @@ mod tests {
             10,
             7,
             &HashMap::new(),
-            &RenderOptions {
-                verbose: false,
-                color: false,
-            },
+            &RenderOptions { verbose: false },
         );
         // The top border of the node should still contain ─, not │ from the edge.
         let lines: Vec<&str> = output.lines().collect();
