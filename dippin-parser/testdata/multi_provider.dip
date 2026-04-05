@@ -1,0 +1,30 @@
+workflow MultiProvider
+  goal: "Test workflow with multiple providers"
+  start: Ask
+  exit: Done
+
+  human Ask
+    mode: freeform
+
+  agent Think
+    label: "Think Step"
+    model: claude-sonnet-4-6
+    provider: anthropic
+    prompt:
+      Analyze the request.
+
+  agent Generate
+    label: "Generate Step"
+    model: gpt-4.1-nano
+    provider: openai
+    prompt:
+      Generate a response.
+
+  agent Done
+    prompt:
+      Finish up.
+
+  edges
+    Ask -> Think
+    Think -> Generate
+    Generate -> Done

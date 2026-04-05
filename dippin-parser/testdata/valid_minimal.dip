@@ -1,0 +1,14 @@
+workflow Minimal
+  goal: "Test workflow"
+  start: Ask
+  exit: Done
+
+  human Ask
+    mode: freeform
+
+  agent Done
+    prompt:
+      Complete the task.
+
+  edges
+    Ask -> Done
