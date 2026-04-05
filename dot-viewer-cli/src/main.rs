@@ -16,9 +16,9 @@ use crate::plain::parse_plain;
 use crate::render::{render_ascii, RenderOptions};
 
 #[derive(Parser)]
-#[command(name = "dot-viewer", about = "Render DOT graph files as ASCII art in the terminal")]
+#[command(name = "dot-viewer", about = "Render DOT and Dippin graph files as ASCII art in the terminal")]
 struct Cli {
-    /// Path to the .dot file
+    /// Path to a .dot or .dip file
     file: PathBuf,
     /// Show all node attributes
     #[arg(short, long)]
@@ -54,13 +54,32 @@ fn extract_node_attributes(source: &str) -> HashMap<String, Vec<Attribute>> {
     attrs
 }
 
+/// Detect .dip files and convert to DOT format before rendering.
+fn resolve_dot_source(file: &std::path::Path, raw_source: &str) -> String {
+    let ext = file
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    if ext == "dip" {
+        let filename = file.display().to_string();
+        dippin_parser::convert_to_dot(raw_source, &filename).unwrap_or_else(|e| {
+            eprintln!("Dippin parse error: {}", e);
+            std::process::exit(1);
+        })
+    } else {
+        raw_source.to_string()
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
-    let source = std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
+    let raw_source = std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
         eprintln!("Error reading {}: {}", cli.file.display(), e);
         std::process::exit(1);
     });
+
+    let source = resolve_dot_source(&cli.file, &raw_source);
 
     let layout_engine = parse_engine(&cli.engine);
 
