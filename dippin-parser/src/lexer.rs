@@ -381,8 +381,8 @@ impl Lexer {
         if let Some(new_i) = self.try_lex_identifier(line, i, &loc) {
             return new_i;
         }
-        // Skip unknown character
-        i + 1
+        // Skip unknown character, advancing past the full UTF-8 code point
+        i + line[i..].chars().next().map_or(1, |c| c.len_utf8())
     }
 
     /// Handle single-character punctuation: : , ( )
@@ -605,23 +605,24 @@ fn is_operator_char(ch: u8) -> bool {
 }
 
 /// Read characters from line[start:] until an unescaped closing quote.
+/// Uses char iteration to correctly handle multi-byte UTF-8 sequences.
 fn read_quoted_content(line: &str, start: usize) -> (String, usize) {
-    let bytes = line.as_bytes();
     let mut content = String::new();
-    let mut i = start;
-    while i < bytes.len() && bytes[i] != b'"' {
-        if bytes[i] == b'\\' && i + 1 < bytes.len() {
-            content.push(bytes[i + 1] as char);
-            i += 2;
+    let mut chars = line[start..].char_indices();
+    while let Some((offset, ch)) = chars.next() {
+        if ch == '"' {
+            return (content, start + offset + 1);
+        }
+        if ch == '\\' {
+            if let Some((_next_offset, escaped_ch)) = chars.next() {
+                content.push(escaped_ch);
+            }
         } else {
-            content.push(bytes[i] as char);
-            i += 1;
+            content.push(ch);
         }
     }
-    if i < bytes.len() {
-        i += 1; // skip closing quote
-    }
-    (content, i)
+    // Reached end of line without closing quote
+    (content, line.len())
 }
 
 /// Check if a byte is alphanumeric.

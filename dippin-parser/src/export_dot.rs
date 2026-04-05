@@ -229,37 +229,37 @@ fn is_simple_dot_id(s: &str) -> bool {
 }
 
 /// Wrap a string in double quotes, escaping internal quotes and backslashes.
+/// Uses char iteration to correctly handle multi-byte UTF-8 sequences.
 fn dot_quote(s: &str) -> String {
     let mut b = String::with_capacity(s.len() + 2);
     b.push('"');
-    let bytes = s.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        let ch = bytes[i];
-        if ch == b'"' {
+    let mut chars = s.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '"' {
             b.push_str("\\\"");
-            i += 1;
-        } else if ch == b'\\' {
-            if i + 1 < bytes.len() && is_dot_escape_char(bytes[i + 1]) {
-                b.push('\\');
-                b.push(bytes[i + 1] as char);
-                i += 2;
+        } else if ch == '\\' {
+            if let Some(&next) = chars.peek() {
+                if is_dot_escape_char(next) {
+                    b.push('\\');
+                    b.push(next);
+                    chars.next();
+                } else {
+                    b.push_str("\\\\");
+                }
             } else {
                 b.push_str("\\\\");
-                i += 1;
             }
         } else {
-            b.push(ch as char);
-            i += 1;
+            b.push(ch);
         }
     }
     b.push('"');
     b
 }
 
-/// Check if a byte is a DOT escape sequence character (n, l, r).
-fn is_dot_escape_char(ch: u8) -> bool {
-    ch == b'n' || ch == b'l' || ch == b'r'
+/// Check if a character is a DOT escape sequence character (n, l, r).
+fn is_dot_escape_char(ch: char) -> bool {
+    ch == 'n' || ch == 'l' || ch == 'r'
 }
 
 /// Replace literal newlines with the DOT \n escape.
