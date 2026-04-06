@@ -2,6 +2,7 @@
 // ABOUTME: Defines the canonical data model shared between parsing and export.
 
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// Workflow is the top-level IR structure representing a complete pipeline.
 #[derive(Debug, Clone, Default)]
@@ -56,17 +57,18 @@ pub enum NodeKind {
     Subgraph,
 }
 
-impl NodeKind {
-    /// Parse a node kind from a string keyword.
-    pub fn from_str(s: &str) -> Option<NodeKind> {
+impl FromStr for NodeKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "agent" => Some(NodeKind::Agent),
-            "human" => Some(NodeKind::Human),
-            "tool" => Some(NodeKind::Tool),
-            "parallel" => Some(NodeKind::Parallel),
-            "fan_in" => Some(NodeKind::FanIn),
-            "subgraph" => Some(NodeKind::Subgraph),
-            _ => None,
+            "agent" => Ok(NodeKind::Agent),
+            "human" => Ok(NodeKind::Human),
+            "tool" => Ok(NodeKind::Tool),
+            "parallel" => Ok(NodeKind::Parallel),
+            "fan_in" => Ok(NodeKind::FanIn),
+            "subgraph" => Ok(NodeKind::Subgraph),
+            _ => Err(format!("unknown node kind: {}", s)),
         }
     }
 }
@@ -253,13 +255,13 @@ mod tests {
 
     #[test]
     fn test_node_kind_from_str() {
-        assert_eq!(NodeKind::from_str("agent"), Some(NodeKind::Agent));
-        assert_eq!(NodeKind::from_str("human"), Some(NodeKind::Human));
-        assert_eq!(NodeKind::from_str("tool"), Some(NodeKind::Tool));
-        assert_eq!(NodeKind::from_str("parallel"), Some(NodeKind::Parallel));
-        assert_eq!(NodeKind::from_str("fan_in"), Some(NodeKind::FanIn));
-        assert_eq!(NodeKind::from_str("subgraph"), Some(NodeKind::Subgraph));
-        assert_eq!(NodeKind::from_str("unknown"), None);
+        assert_eq!("agent".parse::<NodeKind>(), Ok(NodeKind::Agent));
+        assert_eq!("human".parse::<NodeKind>(), Ok(NodeKind::Human));
+        assert_eq!("tool".parse::<NodeKind>(), Ok(NodeKind::Tool));
+        assert_eq!("parallel".parse::<NodeKind>(), Ok(NodeKind::Parallel));
+        assert_eq!("fan_in".parse::<NodeKind>(), Ok(NodeKind::FanIn));
+        assert_eq!("subgraph".parse::<NodeKind>(), Ok(NodeKind::Subgraph));
+        assert!("unknown".parse::<NodeKind>().is_err());
     }
 
     #[test]

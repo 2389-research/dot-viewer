@@ -215,9 +215,15 @@ fn dot_id(s: &str) -> String {
     dot_quote(s)
 }
 
+/// DOT language reserved keywords that must always be quoted.
+const DOT_RESERVED: &[&str] = &["node", "edge", "graph", "digraph", "subgraph", "strict"];
+
 /// Check if a string is a valid unquoted DOT identifier.
 fn is_simple_dot_id(s: &str) -> bool {
     if s.is_empty() {
+        return false;
+    }
+    if DOT_RESERVED.contains(&s) {
         return false;
     }
     let bytes = s.as_bytes();
@@ -475,6 +481,88 @@ mod tests {
             value: "success".to_string(),
         };
         assert_eq!(format_condition(&expr), "outcome = success");
+    }
+
+    #[test]
+    fn test_format_nested_and_or() {
+        // And(Compare(a), Or(Compare(b), Compare(c))) → "a and (b or c)"
+        let expr = ConditionExpr::And {
+            left: Box::new(ConditionExpr::Compare {
+                variable: "ctx.x".into(), op: "=".into(), value: "1".into(),
+            }),
+            right: Box::new(ConditionExpr::Or {
+                left: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.y".into(), op: "=".into(), value: "2".into(),
+                }),
+                right: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.z".into(), op: "=".into(), value: "3".into(),
+                }),
+            }),
+        };
+        assert_eq!(format_condition(&expr), "x = 1 and (y = 2 or z = 3)");
+    }
+
+    #[test]
+    fn test_format_nested_and_and() {
+        // And(Compare(a), And(Compare(b), Compare(c))) → "a and b and c"
+        let expr = ConditionExpr::And {
+            left: Box::new(ConditionExpr::Compare {
+                variable: "ctx.a".into(), op: "=".into(), value: "1".into(),
+            }),
+            right: Box::new(ConditionExpr::And {
+                left: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.b".into(), op: "=".into(), value: "2".into(),
+                }),
+                right: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.c".into(), op: "=".into(), value: "3".into(),
+                }),
+            }),
+        };
+        assert_eq!(format_condition(&expr), "a = 1 and b = 2 and c = 3");
+    }
+
+    #[test]
+    fn test_format_nested_or_and() {
+        // Or(Compare(a), And(Compare(b), Compare(c))) → "a or (b and c)"
+        let expr = ConditionExpr::Or {
+            left: Box::new(ConditionExpr::Compare {
+                variable: "ctx.a".into(), op: "=".into(), value: "1".into(),
+            }),
+            right: Box::new(ConditionExpr::And {
+                left: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.b".into(), op: "=".into(), value: "2".into(),
+                }),
+                right: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.c".into(), op: "=".into(), value: "3".into(),
+                }),
+            }),
+        };
+        assert_eq!(format_condition(&expr), "a = 1 or (b = 2 and c = 3)");
+    }
+
+    #[test]
+    fn test_format_not_with_and() {
+        let expr = ConditionExpr::Not {
+            inner: Box::new(ConditionExpr::And {
+                left: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.a".into(), op: "=".into(), value: "1".into(),
+                }),
+                right: Box::new(ConditionExpr::Compare {
+                    variable: "ctx.b".into(), op: "=".into(), value: "2".into(),
+                }),
+            }),
+        };
+        assert_eq!(format_condition(&expr), "not (a = 1 and b = 2)");
+    }
+
+    #[test]
+    fn test_dot_id_reserved_keywords_quoted() {
+        assert_eq!(dot_id("node"), "\"node\"");
+        assert_eq!(dot_id("edge"), "\"edge\"");
+        assert_eq!(dot_id("graph"), "\"graph\"");
+        assert_eq!(dot_id("digraph"), "\"digraph\"");
+        assert_eq!(dot_id("subgraph"), "\"subgraph\"");
+        assert_eq!(dot_id("strict"), "\"strict\"");
     }
 
     #[test]

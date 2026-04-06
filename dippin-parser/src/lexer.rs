@@ -310,8 +310,8 @@ impl Lexer {
     /// Find the next non-blank, non-comment line starting from idx.
     fn find_next_content_line(&self, mut idx: usize) -> usize {
         while idx < self.lines.len() {
-            let nl = self.lines[idx].trim_end();
-            if !nl.trim().is_empty() {
+            let trimmed = self.lines[idx].trim();
+            if !trimmed.is_empty() && !trimmed.starts_with('#') {
                 return idx;
             }
             idx += 1;
@@ -515,15 +515,25 @@ fn is_blank_or_comment(line: &str) -> bool {
 }
 
 /// Find an unquoted # character in a string.
+/// Handles escaped quotes (`\"`) inside quoted sections correctly.
 fn find_unquoted_hash(s: &str) -> Option<usize> {
+    let bytes = s.as_bytes();
     let mut in_quote = false;
-    for (i, ch) in s.bytes().enumerate() {
+    let mut i = 0;
+    while i < bytes.len() {
+        let ch = bytes[i];
+        if in_quote && ch == b'\\' {
+            // Skip escaped character inside quotes
+            i += 2;
+            continue;
+        }
         if ch == b'"' {
             in_quote = !in_quote;
         }
         if !in_quote && ch == b'#' {
             return Some(i);
         }
+        i += 1;
     }
     None
 }
@@ -555,7 +565,7 @@ fn is_key_colon_line(content: &str) -> bool {
             return false;
         }
         let key = &content[..colon_idx];
-        if !key.bytes().all(|b| is_ident_rune(b)) {
+        if !key.bytes().all(is_ident_rune) {
             return false;
         }
         let after = content[colon_idx + 1..].trim();

@@ -96,7 +96,7 @@ impl Parser {
 
     /// Handle node kinds and unknown identifiers.
     fn dispatch_workflow_default(&mut self, t: &Token) {
-        if let Some(kind) = NodeKind::from_str(&t.value) {
+        if let Ok(kind) = t.value.parse::<NodeKind>() {
             self.parse_node(kind);
         } else {
             self.diagnostics.push(format!(
@@ -574,7 +574,12 @@ impl Parser {
                     self.expect(TokenType::Colon);
                     edge.restart = self.lexer.next_token().value == "true";
                 }
-                _ => {}
+                unknown => {
+                    self.diagnostics.push(format!(
+                        "unknown edge attribute {:?} at {}:{}",
+                        unknown, attr.location.line, attr.location.column
+                    ));
+                }
             }
         }
     }
@@ -692,8 +697,28 @@ fn unquote_raw(raw: &str) -> String {
     if raw.len() < 2 || !raw.starts_with('"') || !raw.ends_with('"') {
         return raw.to_string();
     }
-    let unquoted = &raw[1..raw.len() - 1];
-    unquoted.replace("\\\"", "\"").replace("\\\\", "\\")
+    let inner = &raw[1..raw.len() - 1];
+    let mut result = String::with_capacity(inner.len());
+    let mut chars = inner.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            match chars.next() {
+                Some('"') => result.push('"'),
+                Some('\\') => result.push('\\'),
+                Some('n') => result.push('\n'),
+                Some('t') => result.push('\t'),
+                Some('r') => result.push('\r'),
+                Some(other) => {
+                    result.push('\\');
+                    result.push(other);
+                }
+                None => result.push('\\'),
+            }
+        } else {
+            result.push(ch);
+        }
+    }
+    result
 }
 
 /// Parse a raw stylesheet block into rules.

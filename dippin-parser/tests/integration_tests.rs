@@ -52,20 +52,18 @@ fn test_parse_multi_provider() {
 
     // Check that models are parsed correctly
     let think = wf.nodes.iter().find(|n| n.id == "Think").unwrap();
-    if let dippin_parser::ir::NodeConfig::Agent(cfg) = &think.config {
-        assert_eq!(cfg.model, "claude-sonnet-4-6");
-        assert_eq!(cfg.provider, "anthropic");
-    } else {
+    let dippin_parser::ir::NodeConfig::Agent(cfg) = &think.config else {
         panic!("Think should be an agent node");
-    }
+    };
+    assert_eq!(cfg.model, "claude-sonnet-4-6");
+    assert_eq!(cfg.provider, "anthropic");
 
     let gen = wf.nodes.iter().find(|n| n.id == "Generate").unwrap();
-    if let dippin_parser::ir::NodeConfig::Agent(cfg) = &gen.config {
-        assert_eq!(cfg.model, "gpt-4.1-nano");
-        assert_eq!(cfg.provider, "openai");
-    } else {
+    let dippin_parser::ir::NodeConfig::Agent(cfg) = &gen.config else {
         panic!("Generate should be an agent node");
-    }
+    };
+    assert_eq!(cfg.model, "gpt-4.1-nano");
+    assert_eq!(cfg.provider, "openai");
 }
 
 #[test]

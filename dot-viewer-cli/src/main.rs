@@ -60,7 +60,7 @@ fn resolve_dot_source(file: &std::path::Path, raw_source: &str) -> String {
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("");
-    if ext == "dip" {
+    if ext.eq_ignore_ascii_case("dip") {
         let filename = file.display().to_string();
         dippin_parser::convert_to_dot(raw_source, &filename).unwrap_or_else(|e| {
             eprintln!("Dippin parse error: {}", e);
