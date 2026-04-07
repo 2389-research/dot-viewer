@@ -58,9 +58,9 @@ impl fmt::Display for Duration {
         let secs = self.0.as_secs();
         if secs == 0 && self.0.as_millis() > 0 {
             write!(f, "{}ms", self.0.as_millis())
-        } else if secs > 0 && secs % 3600 == 0 {
+        } else if secs > 0 && secs.is_multiple_of(3600) {
             write!(f, "{}h", secs / 3600)
-        } else if secs > 0 && secs % 60 == 0 {
+        } else if secs > 0 && secs.is_multiple_of(60) {
             write!(f, "{}m", secs / 60)
         } else {
             write!(f, "{}s", secs)
