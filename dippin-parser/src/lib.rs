@@ -1,3 +1,48 @@
+//! # dippin-parser
+//!
+//! A Rust parser and DOT exporter for the Dippin DSL — a higher-level authoring
+//! format for AI agent workflows that lowers to Graphviz DOT for visualization.
+//!
+//! This crate is a port of the upstream Go implementation at
+//! [github.com/2389-research/dippin-lang](https://github.com/2389-research/dippin-lang).
+//! See that repository for the canonical language reference.
+//!
+//! ## Quick start
+//!
+//! ```
+//! use dippin_parser::{parse, parse_to_dot};
+//!
+//! let source = "\
+//! workflow Greet
+//!   start: Ask
+//!   exit: Done
+//!   agent Ask
+//!     prompt: \"Hi!\"
+//!     model: claude-sonnet-4-6
+//!     provider: anthropic
+//!   agent Done
+//!     prompt: \"Bye!\"
+//!     model: gpt-4.1-nano
+//!     provider: openai
+//!   edges
+//!     Ask -> Done
+//! ";
+//!
+//! let wf = parse(source, "greet.dip").unwrap();
+//! assert_eq!(wf.name, "Greet");
+//!
+//! let dot = parse_to_dot(source, "greet.dip").unwrap();
+//! assert!(dot.contains("digraph Greet {"));
+//! ```
+//!
+//! ## Features
+//!
+//! - `serde` — derives `Serialize`/`Deserialize` for IR types.
+//!
+//! ## Stability
+//!
+//! Pre-1.0. All public types are `#[non_exhaustive]`.
+
 // ABOUTME: Public API for the dippin parser and DOT exporter.
 // ABOUTME: Provides parse() and export_dot() functions for converting .dip files to DOT format.
 
