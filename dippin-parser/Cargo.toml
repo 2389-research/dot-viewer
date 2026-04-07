@@ -5,6 +5,18 @@
 name = "dippin-parser"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.75"
+description = "Parser and DOT exporter for the Dippin AI workflow DSL."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/2389-research/dot-viewer"
+documentation = "https://docs.rs/dippin-parser"
+readme = "README.md"
+keywords = ["dippin", "parser", "graphviz", "dot", "workflow"]
+categories = ["parser-implementations", "compilers"]
+
+[lints.clippy]
+all = "warn"
+# pedantic enabled selectively in Phase 5 once docs land.
 
 [features]
 default = []
