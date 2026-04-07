@@ -13,14 +13,12 @@ pub use ir::Workflow;
 pub use parser::Parser;
 
 /// Parse a dippin source string into a Workflow IR.
-pub fn parse(source: &str, filename: &str) -> std::result::Result<Workflow, String> {
-    Parser::new(source, filename)
-        .parse()
-        .map_err(|e| format!("{}", e))
+pub fn parse(source: &str, filename: &str) -> Result<Workflow> {
+    Parser::new(source, filename).parse()
 }
 
 /// Convert a dippin source string directly to DOT format.
-pub fn convert_to_dot(source: &str, filename: &str) -> std::result::Result<String, String> {
+pub fn convert_to_dot(source: &str, filename: &str) -> Result<String> {
     let wf = parse(source, filename)?;
     Ok(export_dot_string(&wf, &ExportOptions::default()))
 }
@@ -30,7 +28,7 @@ pub fn convert_to_dot_with_options(
     source: &str,
     filename: &str,
     opts: &ExportOptions,
-) -> std::result::Result<String, String> {
+) -> Result<String> {
     let wf = parse(source, filename)?;
     Ok(export_dot_string(&wf, opts))
 }
