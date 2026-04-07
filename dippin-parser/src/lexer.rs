@@ -1,6 +1,7 @@
 // ABOUTME: Indentation-aware tokenizer for the Dippin workflow language.
 // ABOUTME: Produces a flat token stream with explicit INDENT/OUTDENT tokens.
 
+use crate::error::{Diagnostic, DiagnosticKind};
 use crate::ir::SourceLocation;
 
 /// Token types produced by the lexer.
@@ -41,6 +42,7 @@ pub struct Lexer {
     tokens: Vec<Token>,
     token_idx: usize,
     filename: String,
+    pub(crate) diagnostics: Vec<Diagnostic>,
 }
 
 impl Lexer {
@@ -55,6 +57,7 @@ impl Lexer {
             tokens: Vec::new(),
             token_idx: 0,
             filename: filename.to_string(),
+            diagnostics: Vec::new(),
         };
         lexer.lex();
         lexer
@@ -381,8 +384,15 @@ impl Lexer {
         if let Some(new_i) = self.try_lex_identifier(line, i, &loc) {
             return new_i;
         }
-        // Skip unknown character, advancing past the full UTF-8 code point
-        i + line[i..].chars().next().map_or(1, |c| c.len_utf8())
+        // Unknown character: emit diagnostic and advance past the full UTF-8 code point
+        let ch = line[i..].chars().next();
+        let ch_str = ch.map(|c| c.to_string()).unwrap_or_default();
+        self.diagnostics.push(Diagnostic::error(
+            DiagnosticKind::UnknownCharacter(ch_str.clone()),
+            format!("unknown character {:?}", ch_str),
+            loc,
+        ));
+        i + ch.map_or(1, |c| c.len_utf8())
     }
 
     /// Handle single-character punctuation: : , ( )
@@ -464,7 +474,14 @@ impl Lexer {
         if line.as_bytes()[i] != b'"' {
             return None;
         }
-        let (content, new_i) = read_quoted_content(line, i + 1);
+        let (content, new_i, terminated) = read_quoted_content(line, i + 1);
+        if !terminated {
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::UnterminatedString,
+                "unterminated string literal",
+                loc.clone(),
+            ));
+        }
         self.tokens.push(Token {
             token_type: TokenType::Literal,
             value: content,
@@ -616,12 +633,13 @@ fn is_operator_char(ch: u8) -> bool {
 
 /// Read characters from line[start:] until an unescaped closing quote.
 /// Uses char iteration to correctly handle multi-byte UTF-8 sequences.
-fn read_quoted_content(line: &str, start: usize) -> (String, usize) {
+/// Returns (content, new_index, terminated) where terminated is false if EOL hit.
+fn read_quoted_content(line: &str, start: usize) -> (String, usize, bool) {
     let mut content = String::new();
     let mut chars = line[start..].char_indices();
     while let Some((offset, ch)) = chars.next() {
         if ch == '"' {
-            return (content, start + offset + 1);
+            return (content, start + offset + 1, true);
         }
         if ch == '\\' {
             if let Some((_next_offset, escaped_ch)) = chars.next() {
@@ -632,7 +650,7 @@ fn read_quoted_content(line: &str, start: usize) -> (String, usize) {
         }
     }
     // Reached end of line without closing quote
-    (content, line.len())
+    (content, line.len(), false)
 }
 
 /// Check if a byte is alphanumeric.
