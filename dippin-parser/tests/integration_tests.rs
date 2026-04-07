@@ -402,6 +402,32 @@ fn test_defaults_complex_fixture() {
 }
 
 #[test]
+fn test_ask_and_execute_golden_snapshot() {
+    // ABOUTME: Golden-snapshot test: parse_to_dot(ask_and_execute.dip) must match
+    // the committed ask_and_execute.dot byte-for-byte (after trimming trailing ws).
+    let source = read_testdata("ask_and_execute.dip");
+    let actual = parse_to_dot(&source, "ask_and_execute.dip")
+        .expect("ask_and_execute.dip should convert to DOT");
+    let expected = read_testdata("ask_and_execute.dot");
+
+    if actual.trim() != expected.trim() {
+        // On mismatch, dump the actual output next to the golden so a developer
+        // can diff the two manually and either fix the exporter or refresh the
+        // golden deliberately.
+        let actual_path = testdata_path("ask_and_execute.dot.actual");
+        std::fs::write(&actual_path, &actual)
+            .expect("should be able to write .actual sibling file");
+        panic!(
+            "ask_and_execute.dot golden mismatch; wrote actual output to {}.\n\
+             Diff with:\n  diff -u {} {}",
+            actual_path,
+            testdata_path("ask_and_execute.dot"),
+            actual_path,
+        );
+    }
+}
+
+#[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
     let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");

@@ -12,3 +12,6 @@ dot-core-wasm/target/
 web/node_modules/
 web/build/
 web/.svelte-kit/
+
+# Test harness scratch output from golden-snapshot mismatches
+dippin-parser/testdata/*.actual
