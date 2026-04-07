@@ -241,38 +241,23 @@ fn is_simple_dot_id(s: &str) -> bool {
         .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
 
-/// Wrap a string in double quotes, escaping internal quotes and backslashes.
-/// Uses char iteration to correctly handle multi-byte UTF-8 sequences.
+/// Wrap a string in double quotes, escaping internal quotes, backslashes,
+/// and control characters so the result is always a valid DOT quoted string.
 fn dot_quote(s: &str) -> String {
-    let mut b = String::with_capacity(s.len() + 2);
-    b.push('"');
-    let mut chars = s.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '"' {
-            b.push_str("\\\"");
-        } else if ch == '\\' {
-            if let Some(&next) = chars.peek() {
-                if is_dot_escape_char(next) {
-                    b.push('\\');
-                    b.push(next);
-                    chars.next();
-                } else {
-                    b.push_str("\\\\");
-                }
-            } else {
-                b.push_str("\\\\");
-            }
-        } else {
-            b.push(ch);
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c => out.push(c),
         }
     }
-    b.push('"');
-    b
-}
-
-/// Check if a character is a DOT escape sequence character (n, l, r).
-fn is_dot_escape_char(ch: char) -> bool {
-    ch == 'n' || ch == 'l' || ch == 'r'
+    out.push('"');
+    out
 }
 
 /// Replace literal newlines with the DOT \n escape.
@@ -307,6 +292,16 @@ mod tests {
     fn test_dot_quote() {
         assert_eq!(dot_quote("hello"), "\"hello\"");
         assert_eq!(dot_quote("he\"llo"), "\"he\\\"llo\"");
+    }
+
+    #[test]
+    fn test_dot_quote_escapes_all_backslashes() {
+        // Inputs with literal backslashes must produce \\, not be passed through
+        assert_eq!(dot_quote(r"path\to\file"), r#""path\\to\\file""#);
+        // Embedded quote must be escaped
+        assert_eq!(dot_quote(r#"a"b"#), r#""a\"b""#);
+        // Real newline must be escaped
+        assert_eq!(dot_quote("line1\nline2"), r#""line1\nline2""#);
     }
 
     #[test]
