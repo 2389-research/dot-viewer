@@ -85,6 +85,20 @@ fn resolve_dot_source(file: &std::path::Path, raw_source: &str) -> String {
 fn main() {
     let cli = Cli::parse();
 
+    // Reject pathologically large inputs up front so the parser never sees
+    // them. The limit matches dippin_parser::MAX_INPUT_SIZE.
+    let metadata = std::fs::metadata(&cli.file).unwrap_or_else(|e| {
+        eprintln!("error: cannot stat {}: {}", cli.file.display(), e);
+        std::process::exit(EX_NOINPUT);
+    });
+    if metadata.len() as usize > dippin_parser::MAX_INPUT_SIZE {
+        eprintln!(
+            "error: file exceeds maximum size of {} bytes",
+            dippin_parser::MAX_INPUT_SIZE
+        );
+        std::process::exit(EX_DATAERR);
+    }
+
     let raw_source = std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
         eprintln!("Error reading {}: {}", cli.file.display(), e);
         std::process::exit(EX_NOINPUT);
