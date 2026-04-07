@@ -23,33 +23,34 @@ use parser::Parser;
 pub const MAX_INPUT_SIZE: usize = 10 * 1024 * 1024;
 
 /// Parse a dippin source string into a Workflow IR.
-pub fn parse(source: &str, filename: &str) -> Result<Workflow> {
+pub fn parse(source: &str, filename: impl AsRef<std::path::Path>) -> Result<Workflow> {
+    let filename = filename.as_ref().to_string_lossy().into_owned();
     if source.len() > MAX_INPUT_SIZE {
         return Err(Error::Parse {
-            file: filename.into(),
+            file: filename.clone(),
             diagnostics: vec![Diagnostic::error(
                 DiagnosticKind::Other,
                 format!("input exceeds maximum size of {} bytes", MAX_INPUT_SIZE),
                 crate::ir::SourceLocation {
-                    file: filename.into(),
+                    file: filename,
                     line: 1,
                     column: 1,
                 },
             )],
         });
     }
-    Parser::new(source, filename).parse()
+    Parser::new(source, &filename).parse()
 }
 
 /// Parse and convert to DOT in a single call.
-pub fn parse_to_dot(source: &str, filename: &str) -> Result<String> {
+pub fn parse_to_dot(source: &str, filename: impl AsRef<std::path::Path>) -> Result<String> {
     parse_to_dot_with_options(source, filename, &ExportOptions::default())
 }
 
 /// Parse and convert to DOT with custom export options.
 pub fn parse_to_dot_with_options(
     source: &str,
-    filename: &str,
+    filename: impl AsRef<std::path::Path>,
     opts: &ExportOptions,
 ) -> Result<String> {
     let wf = parse(source, filename)?;
