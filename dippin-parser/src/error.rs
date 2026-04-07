@@ -9,6 +9,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Top-level error returned from `parse` and `convert_to_dot`.
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum Error {
     /// One or more diagnostics were emitted while parsing.
     #[error("{} diagnostic(s) while parsing {file}", diagnostics.len())]
@@ -28,6 +29,7 @@ impl Error {
 
 /// A single diagnostic produced by the lexer or parser.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Diagnostic {
     pub severity: Severity,
     pub kind: DiagnosticKind,
@@ -36,6 +38,7 @@ pub struct Diagnostic {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Severity {
     Error,
     Warning,
@@ -43,6 +46,7 @@ pub enum Severity {
 
 /// Programmatic classification of a diagnostic.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DiagnosticKind {
     UnexpectedToken { expected: String, found: String },
     UnterminatedString,

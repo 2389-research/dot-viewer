@@ -9,6 +9,7 @@ const MAX_INDENT_DEPTH: usize = 64;
 
 /// Token types produced by the lexer.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum TokenType {
     Error,
     Eof,

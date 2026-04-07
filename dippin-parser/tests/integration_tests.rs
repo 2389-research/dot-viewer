@@ -171,10 +171,8 @@ fn test_convert_ask_and_execute_to_dot() {
 #[test]
 fn test_convert_ask_and_execute_with_prompts() {
     let source = read_testdata("ask_and_execute.dip");
-    let opts = ExportOptions {
-        include_prompts: true,
-        ..Default::default()
-    };
+    let mut opts = ExportOptions::default();
+    opts.include_prompts = true;
     let dot =
         convert_to_dot_with_options(&source, "ask_and_execute.dip", &opts).expect("should convert");
 
@@ -208,15 +206,9 @@ fn test_parse_unicode() {
 #[test]
 fn test_convert_unicode_to_dot() {
     let source = read_testdata("unicode.dip");
-    let dot = convert_to_dot_with_options(
-        &source,
-        "unicode.dip",
-        &ExportOptions {
-            include_prompts: true,
-            ..Default::default()
-        },
-    )
-    .expect("convert");
+    let mut opts = ExportOptions::default();
+    opts.include_prompts = true;
+    let dot = convert_to_dot_with_options(&source, "unicode.dip", &opts).expect("convert");
     assert!(
         dot.contains("héllo 你好 🎉") || dot.contains("h\\u00e9llo"),
         "expected unicode prompt to round-trip into DOT, got:\n{}",

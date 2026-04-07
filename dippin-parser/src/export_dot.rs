@@ -8,6 +8,7 @@ use crate::ir::*;
 
 /// Options controlling the DOT output format.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct ExportOptions {
     /// Include full prompt/command text as node attributes.
     pub include_prompts: bool,
