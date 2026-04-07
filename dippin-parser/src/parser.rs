@@ -271,16 +271,16 @@ impl Parser {
     fn parse_defaults_field(&mut self) -> ParseStep<()> {
         let t = self.lexer.peek_token();
         let key = t.value.clone();
-        let line = t.location.line;
+        let loc = t.location.clone();
         self.lexer.next_token();
         self.expect(TokenType::Colon)?;
-        let val = self.read_field_value(line);
-        self.apply_default_field(&key, &val, line);
+        let val = self.read_field_value(loc.line);
+        self.apply_default_field(&key, &val, &loc);
         Ok(())
     }
 
     /// Apply a single default field value.
-    fn apply_default_field(&mut self, key: &str, val: &str, line: usize) {
+    fn apply_default_field(&mut self, key: &str, val: &str, loc: &SourceLocation) {
         match key {
             "model" => self.workflow.defaults.model = val.to_string(),
             "provider" => self.workflow.defaults.provider = val.to_string(),
@@ -289,8 +289,8 @@ impl Parser {
             "restart_target" => self.workflow.defaults.restart_target = val.to_string(),
             "compaction" => self.workflow.defaults.compaction = val.to_string(),
             "on_resume" => self.workflow.defaults.on_resume = val.to_string(),
-            "max_retries" => self.workflow.defaults.max_retries = self.parse_int(val, key, line),
-            "max_restarts" => self.workflow.defaults.max_restarts = self.parse_int(val, key, line),
+            "max_retries" => self.workflow.defaults.max_retries = self.parse_int(val, key, loc),
+            "max_restarts" => self.workflow.defaults.max_restarts = self.parse_int(val, key, loc),
             "cache_tools" => self.workflow.defaults.cache_tools = val == "true",
             _ => {
                 self.diagnostics.push(Diagnostic::error(
@@ -299,11 +299,7 @@ impl Parser {
                         name: key.to_string(),
                     },
                     format!("unknown defaults field {:?}", key),
-                    SourceLocation {
-                        file: self.filename.clone(),
-                        line,
-                        column: 1,
-                    },
+                    loc.clone(),
                 ));
             }
         }
@@ -360,20 +356,20 @@ impl Parser {
     fn parse_node_field(&mut self, node: &mut Node) -> ParseStep<()> {
         let t = self.lexer.peek_token();
         let key = t.value.clone();
-        let line = t.location.line;
+        let loc = t.location.clone();
         self.lexer.next_token();
         self.expect(TokenType::Colon)?;
-        let val = self.read_field_value(line);
-        self.apply_node_field(node, &key, &val, line);
+        let val = self.read_field_value(loc.line);
+        self.apply_node_field(node, &key, &val, &loc);
         Ok(())
     }
 
     /// Apply a field to a node, trying common fields first.
-    fn apply_node_field(&mut self, node: &mut Node, key: &str, val: &str, line: usize) {
-        if self.try_apply_common_field(node, key, val, line) {
+    fn apply_node_field(&mut self, node: &mut Node, key: &str, val: &str, loc: &SourceLocation) {
+        if self.try_apply_common_field(node, key, val, loc) {
             return;
         }
-        self.apply_config_field(node, key, val, line);
+        self.apply_config_field(node, key, val, loc);
     }
 
     /// Try to apply common fields (label, class, reads, writes, retry).
@@ -382,7 +378,7 @@ impl Parser {
         node: &mut Node,
         key: &str,
         val: &str,
-        line: usize,
+        loc: &SourceLocation,
     ) -> bool {
         match key {
             "label" => node.label = val.to_string(),
@@ -392,7 +388,7 @@ impl Parser {
             "retry_policy" => node.retry.policy = val.to_string(),
             "retry_target" => node.retry.retry_target = val.to_string(),
             "fallback_target" => node.retry.fallback_target = val.to_string(),
-            "max_retries" => node.retry.max_retries = self.parse_int(val, key, line),
+            "max_retries" => node.retry.max_retries = self.parse_int(val, key, loc),
             "base_delay" => node.retry.base_delay = val.to_string(),
             _ => return false,
         }
@@ -400,18 +396,24 @@ impl Parser {
     }
 
     /// Dispatch to config-specific field handlers.
-    fn apply_config_field(&mut self, node: &mut Node, key: &str, val: &str, line: usize) {
+    fn apply_config_field(&mut self, node: &mut Node, key: &str, val: &str, loc: &SourceLocation) {
         match &mut node.config {
-            NodeConfig::Agent(cfg) => self.apply_agent_field(cfg, key, val, line),
+            NodeConfig::Agent(cfg) => self.apply_agent_field(cfg, key, val, loc),
             NodeConfig::Human(cfg) => apply_human_field(cfg, key, val),
-            NodeConfig::Tool(cfg) => self.apply_tool_field(cfg, key, val, line),
+            NodeConfig::Tool(cfg) => self.apply_tool_field(cfg, key, val, loc),
             NodeConfig::Subgraph(cfg) => apply_subgraph_field(cfg, key, val),
             _ => {}
         }
     }
 
     /// Apply agent-specific configuration fields.
-    fn apply_agent_field(&mut self, cfg: &mut AgentConfig, key: &str, val: &str, line: usize) {
+    fn apply_agent_field(
+        &mut self,
+        cfg: &mut AgentConfig,
+        key: &str,
+        val: &str,
+        loc: &SourceLocation,
+    ) {
         match key {
             "prompt" => cfg.prompt = val.to_string(),
             "system_prompt" => cfg.system_prompt = val.to_string(),
@@ -425,8 +427,8 @@ impl Parser {
             "goal_gate" => cfg.goal_gate = val == "true",
             "auto_status" => cfg.auto_status = val == "true",
             "cache_tools" => cfg.cache_tools = val == "true",
-            "max_turns" => cfg.max_turns = self.parse_int(val, key, line),
-            "compaction_threshold" => cfg.compaction_threshold = self.parse_float(val, key, line),
+            "max_turns" => cfg.max_turns = self.parse_int(val, key, loc),
+            "compaction_threshold" => cfg.compaction_threshold = self.parse_float(val, key, loc),
             "cmd_timeout" => cfg.cmd_timeout = val.to_string(),
             "params" => cfg.params = parse_params_block(val),
             _ => {}
@@ -434,7 +436,13 @@ impl Parser {
     }
 
     /// Apply tool-specific configuration fields.
-    fn apply_tool_field(&mut self, cfg: &mut ToolConfig, key: &str, val: &str, _line: usize) {
+    fn apply_tool_field(
+        &mut self,
+        cfg: &mut ToolConfig,
+        key: &str,
+        val: &str,
+        _loc: &SourceLocation,
+    ) {
         match key {
             "command" => cfg.command = val.to_string(),
             "timeout" => cfg.timeout = val.to_string(),
@@ -672,7 +680,8 @@ impl Parser {
                 "weight" => {
                     self.expect(TokenType::Colon)?;
                     let wt = self.lexer.next_token();
-                    edge.weight = self.parse_int(&wt.value, "weight", wt.location.line);
+                    let wt_loc = wt.location.clone();
+                    edge.weight = self.parse_int(&wt.value, "weight", &wt_loc);
                 }
                 "restart" => {
                     self.expect(TokenType::Colon)?;
@@ -730,7 +739,7 @@ impl Parser {
     // ── Helpers ───────────────────────────────────────────
 
     /// Parse an integer from a string, recording a diagnostic on failure.
-    fn parse_int(&mut self, val: &str, key: &str, line: usize) -> i32 {
+    fn parse_int(&mut self, val: &str, key: &str, loc: &SourceLocation) -> i32 {
         val.parse::<i32>().unwrap_or_else(|_| {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::InvalidInteger {
@@ -738,18 +747,14 @@ impl Parser {
                     field: key.to_string(),
                 },
                 format!("invalid integer {:?} for {}", val, key),
-                SourceLocation {
-                    file: self.filename.clone(),
-                    line,
-                    column: 1,
-                },
+                loc.clone(),
             ));
             0
         })
     }
 
     /// Parse a float from a string, recording a diagnostic on failure.
-    fn parse_float(&mut self, val: &str, key: &str, line: usize) -> f64 {
+    fn parse_float(&mut self, val: &str, key: &str, loc: &SourceLocation) -> f64 {
         val.parse::<f64>().unwrap_or_else(|_| {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::InvalidFloat {
@@ -757,11 +762,7 @@ impl Parser {
                     field: key.to_string(),
                 },
                 format!("invalid float {:?} for {}", val, key),
-                SourceLocation {
-                    file: self.filename.clone(),
-                    line,
-                    column: 1,
-                },
+                loc.clone(),
             ));
             0.0
         })
