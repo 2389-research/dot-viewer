@@ -2,7 +2,7 @@
 // ABOUTME: Validates parsing and DOT export against known-good inputs.
 
 use dippin_parser::ir::NodeKind;
-use dippin_parser::{convert_to_dot, convert_to_dot_with_options, parse, ExportOptions};
+use dippin_parser::{parse, parse_to_dot, parse_to_dot_with_options, ExportOptions};
 
 fn testdata_path(name: &str) -> String {
     format!(
@@ -135,7 +135,7 @@ fn test_parse_ask_and_execute() {
 #[test]
 fn test_convert_valid_minimal_to_dot() {
     let source = read_testdata("valid_minimal.dip");
-    let dot = convert_to_dot(&source, "valid_minimal.dip").expect("should convert");
+    let dot = parse_to_dot(&source, "valid_minimal.dip").expect("should convert");
     assert!(dot.contains("digraph Minimal {"));
     assert!(dot.contains("Ask"));
     assert!(dot.contains("Done"));
@@ -148,7 +148,7 @@ fn test_convert_valid_minimal_to_dot() {
 #[test]
 fn test_convert_ask_and_execute_to_dot() {
     let source = read_testdata("ask_and_execute.dip");
-    let dot = convert_to_dot(&source, "ask_and_execute.dip").expect("should convert");
+    let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");
 
     // Check basic structure
     assert!(dot.contains("digraph AskAndExecute {"));
@@ -174,7 +174,7 @@ fn test_convert_ask_and_execute_with_prompts() {
     let mut opts = ExportOptions::default();
     opts.include_prompts = true;
     let dot =
-        convert_to_dot_with_options(&source, "ask_and_execute.dip", &opts).expect("should convert");
+        parse_to_dot_with_options(&source, "ask_and_execute.dip", &opts).expect("should convert");
 
     // With include_prompts, agent nodes should have prompt attributes
     assert!(dot.contains("prompt="));
@@ -208,7 +208,7 @@ fn test_convert_unicode_to_dot() {
     let source = read_testdata("unicode.dip");
     let mut opts = ExportOptions::default();
     opts.include_prompts = true;
-    let dot = convert_to_dot_with_options(&source, "unicode.dip", &opts).expect("convert");
+    let dot = parse_to_dot_with_options(&source, "unicode.dip", &opts).expect("convert");
     assert!(
         dot.contains("héllo 你好 🎉") || dot.contains("h\\u00e9llo"),
         "expected unicode prompt to round-trip into DOT, got:\n{}",
@@ -224,7 +224,7 @@ fn test_convert_unicode_to_dot() {
 #[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
-    let dot = convert_to_dot(&source, "ask_and_execute.dip").expect("should convert");
+    let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");
 
     // Conditions should have ctx. prefix removed
     assert!(dot.contains("outcome"));

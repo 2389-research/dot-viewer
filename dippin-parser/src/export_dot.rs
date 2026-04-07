@@ -20,6 +20,13 @@ pub struct ExportOptions {
     pub execution_path: Vec<String>,
 }
 
+impl crate::ir::Workflow {
+    /// Render this workflow as a DOT graph.
+    pub fn to_dot(&self, opts: &ExportOptions) -> String {
+        export_dot(self, opts)
+    }
+}
+
 /// Render a workflow as a DOT language string.
 pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
     let mut b = String::new();
@@ -429,7 +436,7 @@ mod tests {
             execution_path: vec!["A".into(), "B".into()],
             ..Default::default()
         };
-        let dot = crate::convert_to_dot_with_options(src, "t.dip", &opts).unwrap();
+        let dot = crate::parse_to_dot_with_options(src, "t.dip", &opts).unwrap();
         assert!(dot.contains("[1]"), "expected [1] in: {}", dot);
         assert!(dot.contains("[2]"), "expected [2] in: {}", dot);
         assert!(dot.contains("fillcolor"));

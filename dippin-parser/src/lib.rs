@@ -11,7 +11,7 @@ pub mod validate;
 
 pub use duration::Duration;
 pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
-pub use export_dot::{export_dot as export_dot_string, ExportOptions};
+pub use export_dot::ExportOptions;
 pub use ir::{
     AgentConfig, BranchConfig, Condition, Edge, FanInConfig, HumanConfig, Node, NodeConfig,
     NodeIO, NodeKind, ParallelConfig, RetryConfig, SourceLocation, StyleSelector, StylesheetRule,
@@ -41,20 +41,19 @@ pub fn parse(source: &str, filename: &str) -> Result<Workflow> {
     Parser::new(source, filename).parse()
 }
 
-/// Convert a dippin source string directly to DOT format.
-pub fn convert_to_dot(source: &str, filename: &str) -> Result<String> {
-    let wf = parse(source, filename)?;
-    Ok(export_dot_string(&wf, &ExportOptions::default()))
+/// Parse and convert to DOT in a single call.
+pub fn parse_to_dot(source: &str, filename: &str) -> Result<String> {
+    parse_to_dot_with_options(source, filename, &ExportOptions::default())
 }
 
-/// Convert a dippin source string to DOT format with options.
-pub fn convert_to_dot_with_options(
+/// Parse and convert to DOT with custom export options.
+pub fn parse_to_dot_with_options(
     source: &str,
     filename: &str,
     opts: &ExportOptions,
 ) -> Result<String> {
     let wf = parse(source, filename)?;
-    Ok(export_dot_string(&wf, opts))
+    Ok(wf.to_dot(opts))
 }
 
 #[cfg(test)]
@@ -68,7 +67,7 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_to_dot_minimal() {
+    fn test_parse_to_dot_minimal() {
         let input = r#"workflow Minimal
   goal: "Test workflow"
   start: Ask
@@ -84,7 +83,7 @@ mod tests {
   edges
     Ask -> Done
 "#;
-        let dot = convert_to_dot(input, "test.dip").expect("should convert");
+        let dot = parse_to_dot(input, "test.dip").expect("should convert");
         assert!(dot.contains("digraph Minimal {"));
         assert!(dot.contains("Ask"));
         assert!(dot.contains("Done"));
@@ -129,7 +128,7 @@ mod tests {
         assert_eq!(wf.nodes.len(), 4);
         assert_eq!(wf.edges.len(), 3);
 
-        let dot = export_dot_string(&wf, &ExportOptions::default());
+        let dot = wf.to_dot(&ExportOptions::default());
         assert!(dot.contains("digraph MultiProvider {"));
         assert!(dot.contains("Think"));
         assert!(dot.contains("Generate"));
