@@ -20,7 +20,19 @@ const EX_DATAERR: i32 = 65;
 const EX_NOINPUT: i32 = 66;
 
 #[derive(Parser)]
-#[command(name = "dot-viewer", about = "Render DOT and Dippin graph files as ASCII art in the terminal")]
+#[command(
+    name = "dot-viewer",
+    about = "Render DOT and Dippin graph files as ASCII art in the terminal",
+    long_about = "dot-viewer reads Graphviz DOT (.dot, .gv) and Dippin (.dip) files,\n\
+                  lays them out with the chosen Graphviz engine, and renders the result\n\
+                  as ASCII art in your terminal. The format is auto-detected from the\n\
+                  file extension; override with --format.",
+    after_help = "EXAMPLES:\n\
+                  \x20\x20dot-viewer graph.dot\n\
+                  \x20\x20dot-viewer workflow.dip --engine dot\n\
+                  \x20\x20dot-viewer workflow.dip --show-dot\n\
+                  \x20\x20cat workflow.dip | dot-viewer --format dip -"
+)]
 struct Cli {
     /// Path to a .dot or .dip file
     file: PathBuf,
