@@ -355,7 +355,7 @@ impl Parser {
         let kind_tok = self.lexer.next_token(); // kind keyword
         let id = self.expect_identifier(&kind_tok.value)?.value;
         let source = self.lexer.peek_token().location.clone();
-        let config = default_node_config(&kind);
+        let config = NodeConfig::default_for(&kind);
         let mut node = Node {
             id,
             kind,

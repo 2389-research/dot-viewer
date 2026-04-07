@@ -234,21 +234,17 @@ pub enum StyleSelector {
     Kind(String),
 }
 
-/// Create a default NodeConfig for a given NodeKind.
-pub fn default_node_config(kind: &NodeKind) -> NodeConfig {
-    match kind {
-        NodeKind::Agent => NodeConfig::Agent(AgentConfig {
-            params: IndexMap::new(),
-            ..Default::default()
-        }),
-        NodeKind::Human => NodeConfig::Human(HumanConfig::default()),
-        NodeKind::Tool => NodeConfig::Tool(ToolConfig::default()),
-        NodeKind::Parallel => NodeConfig::Parallel(ParallelConfig::default()),
-        NodeKind::FanIn => NodeConfig::FanIn(FanInConfig::default()),
-        NodeKind::Subgraph => NodeConfig::Subgraph(SubgraphConfig {
-            params: IndexMap::new(),
-            ..Default::default()
-        }),
+impl NodeConfig {
+    /// Create a default NodeConfig variant for a given NodeKind.
+    pub fn default_for(kind: &NodeKind) -> Self {
+        match kind {
+            NodeKind::Agent => NodeConfig::Agent(AgentConfig::default()),
+            NodeKind::Human => NodeConfig::Human(HumanConfig::default()),
+            NodeKind::Tool => NodeConfig::Tool(ToolConfig::default()),
+            NodeKind::Parallel => NodeConfig::Parallel(ParallelConfig::default()),
+            NodeKind::FanIn => NodeConfig::FanIn(FanInConfig::default()),
+            NodeKind::Subgraph => NodeConfig::Subgraph(SubgraphConfig::default()),
+        }
     }
 }
 
@@ -269,15 +265,15 @@ mod tests {
 
     #[test]
     fn test_default_node_config() {
-        match default_node_config(&NodeKind::Agent) {
+        match NodeConfig::default_for(&NodeKind::Agent) {
             NodeConfig::Agent(cfg) => assert!(cfg.params.is_empty()),
             _ => panic!("expected AgentConfig"),
         }
-        match default_node_config(&NodeKind::Human) {
+        match NodeConfig::default_for(&NodeKind::Human) {
             NodeConfig::Human(_) => {}
             _ => panic!("expected HumanConfig"),
         }
-        match default_node_config(&NodeKind::Tool) {
+        match NodeConfig::default_for(&NodeKind::Tool) {
             NodeConfig::Tool(_) => {}
             _ => panic!("expected ToolConfig"),
         }
