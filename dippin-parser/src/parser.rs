@@ -12,7 +12,7 @@ use crate::lexer::{Lexer, Token, TokenType};
 type ParseStep<T> = std::result::Result<T, ()>;
 
 /// Parser state holding the lexer, diagnostics, and the workflow being built.
-pub struct Parser {
+pub(crate) struct Parser {
     lexer: Lexer,
     diagnostics: Vec<Diagnostic>,
     workflow: Workflow,

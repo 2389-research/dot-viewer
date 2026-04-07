@@ -17,7 +17,7 @@ pub use ir::{
     NodeIO, NodeKind, ParallelConfig, RetryConfig, SourceLocation, StyleSelector, StylesheetRule,
     SubgraphConfig, ToolConfig, Workflow, WorkflowDefaults,
 };
-pub use parser::Parser;
+use parser::Parser;
 
 /// Maximum source file size in bytes accepted by `parse`.
 pub const MAX_INPUT_SIZE: usize = 10 * 1024 * 1024;
