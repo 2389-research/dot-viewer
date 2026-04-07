@@ -13,14 +13,23 @@ use crate::duration::Duration;
 #[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Workflow {
+    /// Workflow identifier (used as the DOT graph name).
     pub name: String,
+    /// Optional schema/author version string.
     pub version: String,
+    /// Free-form description of what this workflow accomplishes.
     pub goal: String,
+    /// ID of the entry node (must reference a declared Node).
     pub start: String,
+    /// ID of the terminal node (must reference a declared Node).
     pub exit: String,
+    /// Workflow-wide defaults applied to nodes that do not override them.
     pub defaults: WorkflowDefaults,
+    /// All declared nodes, in source order.
     pub nodes: Vec<Node>,
+    /// All declared edges, in source order.
     pub edges: Vec<Edge>,
+    /// Stylesheet rules applied during DOT export.
     pub stylesheet: Vec<StylesheetRule>,
 }
 
@@ -30,15 +39,25 @@ pub struct Workflow {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WorkflowDefaults {
+    /// Default LLM model identifier (e.g., `claude-sonnet-4-6`).
     pub model: String,
+    /// Default LLM provider identifier (e.g., `anthropic`, `openai`).
     pub provider: String,
+    /// Default retry policy name (e.g., `exponential`, `fixed`, `none`).
     pub retry_policy: String,
+    /// Default maximum retry attempts per node.
     pub max_retries: u32,
+    /// Default information-fidelity setting (e.g., `summary:medium`).
     pub fidelity: String,
+    /// Maximum number of times the workflow may be restarted.
     pub max_restarts: u32,
+    /// Default node ID to restart from when a restart edge fires.
     pub restart_target: String,
+    /// Whether tool results are cached across runs by default.
     pub cache_tools: bool,
+    /// Default context-compaction strategy name.
     pub compaction: String,
+    /// Default action to take when a workflow is resumed mid-flight.
     pub on_resume: String,
 }
 
@@ -47,13 +66,21 @@ pub struct WorkflowDefaults {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct Node {
+    /// Unique node identifier as written in the source.
     pub id: String,
+    /// Discriminator for the node category (agent, human, tool, etc.).
     pub kind: NodeKind,
+    /// Optional human-readable label rendered in the DOT output.
     pub label: String,
+    /// Stylesheet class names applied to this node.
     pub classes: Vec<String>,
+    /// Kind-specific configuration payload.
     pub config: NodeConfig,
+    /// Retry behavior for this node.
     pub retry: RetryConfig,
+    /// Declared context reads/writes for this node.
     pub io: NodeIO,
+    /// Source position where this node was declared.
     pub source: SourceLocation,
 }
 
@@ -117,21 +144,37 @@ pub enum NodeConfig {
 #[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct AgentConfig {
+    /// User prompt template sent to the model on each turn.
     pub prompt: String,
+    /// System prompt establishing the agent's persona and rules.
     pub system_prompt: String,
+    /// LLM model identifier (overrides workflow defaults).
     pub model: String,
+    /// LLM provider identifier (overrides workflow defaults).
     pub provider: String,
+    /// Maximum reasoning/tool-call turns before giving up.
     pub max_turns: u32,
+    /// Maximum wall-clock time per agent invocation.
     pub cmd_timeout: Duration,
+    /// Whether tool results are cached across runs.
     pub cache_tools: bool,
+    /// Context-compaction strategy name.
     pub compaction: String,
+    /// Token-count fraction at which context compaction triggers (0.0–1.0).
     pub compaction_threshold: f64,
+    /// Reasoning-effort hint for models that support it (e.g., `low`, `high`).
     pub reasoning_effort: String,
+    /// Information-fidelity setting (e.g., `summary:medium`).
     pub fidelity: String,
+    /// Whether the agent auto-emits status updates between turns.
     pub auto_status: bool,
+    /// If true, the workflow goal must be re-checked after this agent runs.
     pub goal_gate: bool,
+    /// Desired response format identifier (e.g., `json`, `text`).
     pub response_format: String,
+    /// JSON schema enforced on structured responses.
     pub response_schema: String,
+    /// Free-form key/value parameters forwarded to the runtime.
     pub params: IndexMap<String, String>,
 }
 
@@ -140,10 +183,15 @@ pub struct AgentConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct HumanConfig {
+    /// Interaction mode (e.g., `freeform`, `multiple_choice`, `confirm`).
     pub mode: String,
+    /// Default response used when no human input is supplied.
     pub default: String,
+    /// Prompt shown to the human operator.
     pub prompt: String,
+    /// Context key from which to read the questions list.
     pub questions_key: String,
+    /// Context key under which collected answers are written.
     pub answers_key: String,
 }
 
@@ -152,8 +200,11 @@ pub struct HumanConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ToolConfig {
+    /// Shell command line to execute.
     pub command: String,
+    /// Maximum wall-clock duration before the command is killed.
     pub timeout: Duration,
+    /// Names of context keys that capture the command's outputs.
     pub outputs: Vec<String>,
 }
 
@@ -162,7 +213,9 @@ pub struct ToolConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ParallelConfig {
+    /// Inline form: target node IDs to fan out to.
     pub targets: Vec<String>,
+    /// Block form: per-branch configuration overrides.
     pub branches: Vec<BranchConfig>,
 }
 
@@ -171,9 +224,13 @@ pub struct ParallelConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct BranchConfig {
+    /// Node ID this branch fans out to.
     pub target: String,
+    /// Per-branch model override.
     pub model: String,
+    /// Per-branch provider override.
     pub provider: String,
+    /// Per-branch fidelity override.
     pub fidelity: String,
 }
 
@@ -182,6 +239,7 @@ pub struct BranchConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FanInConfig {
+    /// Node IDs whose outputs are joined here.
     pub sources: Vec<String>,
 }
 
@@ -190,7 +248,9 @@ pub struct FanInConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SubgraphConfig {
+    /// Path or reference identifier of the embedded sub-pipeline.
     pub ref_path: String,
+    /// Parameter overrides forwarded to the sub-pipeline.
     pub params: IndexMap<String, String>,
 }
 
@@ -199,10 +259,15 @@ pub struct SubgraphConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RetryConfig {
+    /// Retry policy name (e.g., `exponential`, `fixed`, `none`).
     pub policy: String,
+    /// Maximum number of retry attempts.
     pub max_retries: u32,
+    /// Base delay between retries (multiplied by policy backoff).
     pub base_delay: Duration,
+    /// Optional node ID to jump to when retries are exhausted.
     pub retry_target: String,
+    /// Optional node ID to jump to on terminal failure.
     pub fallback_target: String,
 }
 
@@ -211,7 +276,9 @@ pub struct RetryConfig {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct NodeIO {
+    /// Context keys this node reads from.
     pub reads: Vec<String>,
+    /// Context keys this node writes to.
     pub writes: Vec<String>,
 }
 
@@ -219,8 +286,11 @@ pub struct NodeIO {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SourceLocation {
+    /// Source file path (shared via Arc to avoid per-token allocation).
     pub file: Arc<str>,
+    /// 1-based line number.
     pub line: usize,
+    /// 1-based column number (counted in characters, not bytes).
     pub column: usize,
 }
 
@@ -271,12 +341,19 @@ impl<'de> serde::Deserialize<'de> for SourceLocation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Edge {
+    /// Source node ID.
     pub from: String,
+    /// Destination node ID.
     pub to: String,
+    /// Optional human-readable edge label.
     pub label: String,
+    /// Optional guard condition that must hold for the edge to fire.
     pub condition: Option<Condition>,
+    /// Layout hint for Graphviz; higher values pull endpoints closer.
     pub weight: u32,
+    /// If true, this edge restarts the workflow from the source node.
     pub restart: bool,
+    /// Source position where this edge was declared.
     pub source: SourceLocation,
 }
 
@@ -285,6 +362,7 @@ pub struct Edge {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Condition {
+    /// Original textual form of the boolean expression.
     pub raw: String,
 }
 
@@ -293,7 +371,9 @@ pub struct Condition {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct StylesheetRule {
+    /// Selector that determines which nodes this rule targets.
     pub selector: StyleSelector,
+    /// Graphviz attribute name/value pairs to apply.
     pub properties: IndexMap<String, String>,
 }
 
