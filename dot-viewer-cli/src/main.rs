@@ -15,6 +15,9 @@ use crate::grid::{map_to_grid, NodeContent};
 use crate::plain::parse_plain;
 use crate::render::{render_ascii, RenderOptions};
 
+const EX_DATAERR: i32 = 65;
+const EX_NOINPUT: i32 = 66;
+
 #[derive(Parser)]
 #[command(name = "dot-viewer", about = "Render DOT and Dippin graph files as ASCII art in the terminal")]
 struct Cli {
@@ -62,10 +65,18 @@ fn resolve_dot_source(file: &std::path::Path, raw_source: &str) -> String {
         .unwrap_or("");
     if ext.eq_ignore_ascii_case("dip") {
         let filename = file.display().to_string();
-        dippin_parser::convert_to_dot(raw_source, &filename).unwrap_or_else(|e| {
-            eprintln!("Dippin parse error: {}", e);
-            std::process::exit(1);
-        })
+        match dippin_parser::convert_to_dot(raw_source, &filename) {
+            Ok(s) => s,
+            Err(e) => {
+                for diag in e.diagnostics() {
+                    eprintln!("{}", diag.render());
+                }
+                if e.diagnostics().is_empty() {
+                    eprintln!("dippin parse error: {}", e);
+                }
+                std::process::exit(EX_DATAERR);
+            }
+        }
     } else {
         raw_source.to_string()
     }
@@ -76,7 +87,7 @@ fn main() {
 
     let raw_source = std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
         eprintln!("Error reading {}: {}", cli.file.display(), e);
-        std::process::exit(1);
+        std::process::exit(EX_NOINPUT);
     });
 
     let source = resolve_dot_source(&cli.file, &raw_source);
@@ -85,7 +96,7 @@ fn main() {
 
     // Get Graphviz plain format layout
     let plain_output = render_dot_plain(source.clone(), layout_engine).unwrap_or_else(|e| {
-        eprintln!("Graphviz error: {:?}", e);
+        eprintln!("Graphviz error: {}", e);
         std::process::exit(1);
     });
 
