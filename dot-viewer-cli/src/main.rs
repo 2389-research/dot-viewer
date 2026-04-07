@@ -45,6 +45,9 @@ struct Cli {
     /// Force input format. Auto detects from the file extension.
     #[arg(long, value_enum, default_value_t = Format::Auto)]
     format: Format,
+    /// Print the converted DOT source to stdout instead of rendering it.
+    #[arg(long)]
+    show_dot: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, Default)]
@@ -167,6 +170,11 @@ fn main() {
     };
 
     let source = resolve_dot_source(&cli.file, &raw_source, cli.format);
+
+    if cli.show_dot {
+        print!("{}", source);
+        return;
+    }
 
     let layout_engine: LayoutEngine = cli.engine.into();
 
