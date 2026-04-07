@@ -188,6 +188,48 @@ fn test_convert_ask_and_execute_with_prompts() {
 }
 
 #[test]
+fn test_parse_unicode() {
+    let source = read_testdata("unicode.dip");
+    let wf = parse(&source, "unicode.dip").expect("unicode should parse");
+    assert_eq!(wf.name, "Unicode");
+    let ask = wf.nodes.iter().find(|n| n.id == "Ask").unwrap();
+    let dippin_parser::ir::NodeConfig::Agent(cfg) = &ask.config else {
+        panic!("Ask should be an agent node");
+    };
+    assert_eq!(cfg.prompt, "héllo 你好 🎉");
+
+    let done = wf.nodes.iter().find(|n| n.id == "Done").unwrap();
+    let dippin_parser::ir::NodeConfig::Agent(cfg) = &done.config else {
+        panic!("Done should be an agent node");
+    };
+    assert_eq!(cfg.prompt, "résumé");
+}
+
+#[test]
+fn test_convert_unicode_to_dot() {
+    let source = read_testdata("unicode.dip");
+    let dot = convert_to_dot_with_options(
+        &source,
+        "unicode.dip",
+        &ExportOptions {
+            include_prompts: true,
+            ..Default::default()
+        },
+    )
+    .expect("convert");
+    assert!(
+        dot.contains("héllo 你好 🎉") || dot.contains("h\\u00e9llo"),
+        "expected unicode prompt to round-trip into DOT, got:\n{}",
+        dot
+    );
+    assert!(
+        dot.contains("résumé") || dot.contains("r\\u00e9sum"),
+        "expected résumé to round-trip into DOT, got:\n{}",
+        dot
+    );
+}
+
+#[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
     let dot = convert_to_dot(&source, "ask_and_execute.dip").expect("should convert");
