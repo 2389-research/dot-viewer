@@ -29,6 +29,17 @@ struct Cli {
     /// Graphviz layout engine
     #[arg(long, value_enum, default_value_t = Engine::Dot)]
     engine: Engine,
+    /// Force input format. Auto detects from the file extension.
+    #[arg(long, value_enum, default_value_t = Format::Auto)]
+    format: Format,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, Default)]
+enum Format {
+    #[default]
+    Auto,
+    Dot,
+    Dip,
 }
 
 // NOTE: dot-core's LayoutEngine only supports these six engines, so Patchwork
@@ -68,12 +79,17 @@ fn extract_node_attributes(source: &str) -> HashMap<String, Vec<Attribute>> {
 }
 
 /// Detect .dip files and convert to DOT format before rendering.
-fn resolve_dot_source(file: &std::path::Path, raw_source: &str) -> String {
-    let ext = file
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
-    if ext.eq_ignore_ascii_case("dip") {
+fn resolve_dot_source(file: &std::path::Path, raw_source: &str, format: Format) -> String {
+    let is_dip = match format {
+        Format::Dip => true,
+        Format::Dot => false,
+        Format::Auto => file
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|ext| ext.eq_ignore_ascii_case("dip"))
+            .unwrap_or(false),
+    };
+    if is_dip {
         match dippin_parser::parse_to_dot(raw_source, file) {
             Ok(s) => s,
             Err(e) => {
@@ -113,7 +129,7 @@ fn main() {
         std::process::exit(EX_NOINPUT);
     });
 
-    let source = resolve_dot_source(&cli.file, &raw_source);
+    let source = resolve_dot_source(&cli.file, &raw_source, cli.format);
 
     let layout_engine: LayoutEngine = cli.engine.into();
 
