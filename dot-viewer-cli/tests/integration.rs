@@ -73,6 +73,23 @@ fn test_labeled_nodes() {
 }
 
 #[test]
+fn test_renders_dip_file() {
+    let tmp = std::env::temp_dir().join(format!("dot_viewer_test_{}.dip", std::process::id()));
+    std::fs::write(&tmp, include_str!("../../dippin-parser/testdata/valid_minimal.dip")).unwrap();
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_dot-viewer"))
+        .arg(&tmp)
+        .output()
+        .unwrap();
+
+    let _ = std::fs::remove_file(&tmp);
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Ask"));
+    assert!(stdout.contains("Done"));
+}
+
+#[test]
 fn test_empty_graph() {
     let output = run_cli(&[], "digraph { }");
     // Empty graph should produce minimal or empty output
