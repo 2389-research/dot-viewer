@@ -401,9 +401,9 @@ impl Parser {
     fn apply_config_field(&mut self, node: &mut Node, key: &str, val: &str, loc: &SourceLocation) {
         match &mut node.config {
             NodeConfig::Agent(cfg) => self.apply_agent_field(cfg, key, val, loc),
-            NodeConfig::Human(cfg) => apply_human_field(cfg, key, val),
+            NodeConfig::Human(cfg) => self.apply_human_field(cfg, key, val, loc),
             NodeConfig::Tool(cfg) => self.apply_tool_field(cfg, key, val, loc),
-            NodeConfig::Subgraph(cfg) => apply_subgraph_field(cfg, key, val),
+            NodeConfig::Subgraph(cfg) => self.apply_subgraph_field(cfg, key, val, loc),
             _ => {}
         }
     }
@@ -433,7 +433,7 @@ impl Parser {
             "compaction_threshold" => cfg.compaction_threshold = self.parse_float(val, key, loc),
             "cmd_timeout" => cfg.cmd_timeout = self.parse_duration(val, key, loc),
             "params" => cfg.params = parse_params_block(val),
-            _ => {}
+            unknown => self.unknown_field("agent", unknown, loc),
         }
     }
 
@@ -449,7 +449,40 @@ impl Parser {
             "command" => cfg.command = val.to_string(),
             "timeout" => cfg.timeout = self.parse_duration(val, key, loc),
             "outputs" => cfg.outputs = split_comma(val),
-            _ => {}
+            unknown => self.unknown_field("tool", unknown, loc),
+        }
+    }
+
+    /// Apply human-specific configuration fields.
+    fn apply_human_field(
+        &mut self,
+        cfg: &mut HumanConfig,
+        key: &str,
+        val: &str,
+        loc: &SourceLocation,
+    ) {
+        match key {
+            "mode" => cfg.mode = val.to_string(),
+            "default" => cfg.default = val.to_string(),
+            "prompt" => cfg.prompt = val.to_string(),
+            "questions_key" => cfg.questions_key = val.to_string(),
+            "answers_key" => cfg.answers_key = val.to_string(),
+            unknown => self.unknown_field("human", unknown, loc),
+        }
+    }
+
+    /// Apply subgraph-specific configuration fields.
+    fn apply_subgraph_field(
+        &mut self,
+        cfg: &mut SubgraphConfig,
+        key: &str,
+        val: &str,
+        loc: &SourceLocation,
+    ) {
+        match key {
+            "ref" => cfg.ref_path = val.to_string(),
+            "params" => cfg.params = parse_params_block(val),
+            unknown => self.unknown_field("subgraph", unknown, loc),
         }
     }
 
@@ -581,15 +614,15 @@ impl Parser {
     fn parse_branch_field(&mut self, bc: &mut BranchConfig) -> ParseStep<()> {
         let t = self.lexer.peek_token();
         let key = t.value.clone();
-        let line = t.location.line;
+        let loc = t.location.clone();
         self.lexer.next_token();
         self.expect(TokenType::Colon)?;
-        let val = self.read_field_value(line);
+        let val = self.read_field_value(loc.line);
         match key.as_str() {
             "model" => bc.model = val,
             "provider" => bc.provider = val,
             "fidelity" => bc.fidelity = val,
-            _ => {}
+            unknown => self.unknown_field("branch", unknown, &loc),
         }
         Ok(())
     }
@@ -749,6 +782,18 @@ impl Parser {
 
     // ── Helpers ───────────────────────────────────────────
 
+    /// Record an unknown-field diagnostic at the given location.
+    fn unknown_field(&mut self, scope: &str, name: &str, loc: &SourceLocation) {
+        self.diagnostics.push(Diagnostic::error(
+            DiagnosticKind::UnknownField {
+                scope: scope.to_string(),
+                name: name.to_string(),
+            },
+            format!("unknown {} field `{}`", scope, name),
+            loc.clone(),
+        ));
+    }
+
     /// Parse a non-negative integer from a string, recording a diagnostic on failure.
     fn parse_u32(&mut self, val: &str, key: &str, loc: &SourceLocation) -> u32 {
         val.parse::<u32>().unwrap_or_else(|_| {
@@ -795,27 +840,6 @@ impl Parser {
             ));
             0.0
         })
-    }
-}
-
-/// Apply human-specific configuration fields.
-fn apply_human_field(cfg: &mut HumanConfig, key: &str, val: &str) {
-    match key {
-        "mode" => cfg.mode = val.to_string(),
-        "default" => cfg.default = val.to_string(),
-        "prompt" => cfg.prompt = val.to_string(),
-        "questions_key" => cfg.questions_key = val.to_string(),
-        "answers_key" => cfg.answers_key = val.to_string(),
-        _ => {}
-    }
-}
-
-/// Apply subgraph-specific configuration fields.
-fn apply_subgraph_field(cfg: &mut SubgraphConfig, key: &str, val: &str) {
-    match key {
-        "ref" => cfg.ref_path = val.to_string(),
-        "params" => cfg.params = parse_params_block(val),
-        _ => {}
     }
 }
 
@@ -1197,6 +1221,16 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_unknown_agent_field_diagnoses() {
+        let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    bogus: 1\n    model: m\n    provider: p\n";
+        let err = crate::parse(src, "t.dip").unwrap_err();
+        assert!(err
+            .diagnostics()
+            .iter()
+            .any(|d| matches!(d.kind, crate::DiagnosticKind::UnknownField { .. })));
     }
 
     #[test]
