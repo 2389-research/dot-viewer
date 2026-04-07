@@ -864,14 +864,14 @@ mod tests {
 
     #[test]
     fn test_lexer_handles_crlf() {
-        let src = "workflow Foo\r\n  start: A\r\n  exit: A\r\nagent A\r\n  prompt: \"x\"\r\n  model: m\r\n  provider: p\r\n";
+        let src = "workflow Foo\r\n  start: A\r\n  exit: A\r\n  agent A\r\n    prompt: \"x\"\r\n    model: m\r\n    provider: p\r\n";
         let wf = crate::parse(src, "test.dip").expect("CRLF should parse");
         assert_eq!(wf.name, "Foo");
     }
 
     #[test]
     fn test_lexer_handles_cr_only() {
-        let src = "workflow Foo\r  start: A\r  exit: A\ragent A\r  prompt: \"x\"\r  model: m\r  provider: p\r";
+        let src = "workflow Foo\r  start: A\r  exit: A\r  agent A\r    prompt: \"x\"\r    model: m\r    provider: p\r";
         let wf = crate::parse(src, "test.dip").expect("CR-only should parse");
         assert_eq!(wf.name, "Foo");
     }

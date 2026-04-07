@@ -36,6 +36,9 @@ impl Parser {
         // Drain any diagnostics emitted by the lexer
         let lex_diags = std::mem::take(&mut self.lexer.diagnostics);
         self.diagnostics.extend(lex_diags);
+        // Semantic validation against the IR (start/exit/edge references).
+        let validate_diags = crate::validate::validate(&self.workflow, &self.filename);
+        self.diagnostics.extend(validate_diags);
         if self.workflow.name.is_empty() && self.workflow.nodes.is_empty() {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::EmptyWorkflow,
@@ -1266,6 +1269,16 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_undefined_node_reference_diagnoses() {
+        let src = "workflow F\n  start: Missing\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+        let err = crate::parse(src, "t.dip").unwrap_err();
+        assert!(err
+            .diagnostics()
+            .iter()
+            .any(|d| matches!(d.kind, crate::DiagnosticKind::UndefinedNodeReference(_))));
     }
 
     #[test]

@@ -7,6 +7,7 @@ pub mod export_dot;
 pub mod ir;
 pub mod lexer;
 pub mod parser;
+pub mod validate;
 
 pub use duration::Duration;
 pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
