@@ -48,6 +48,9 @@ pub struct Lexer {
 impl Lexer {
     /// Create a new Lexer and immediately tokenize the input.
     pub fn new(input: &str, filename: &str) -> Self {
+        // Strip leading UTF-8 byte-order mark so editors that insert one don't
+        // confuse the lexer (matches the Go reference parser).
+        let input = input.strip_prefix('\u{FEFF}').unwrap_or(input);
         let lines: Vec<String> = input.split('\n').map(|s| s.to_string()).collect();
         let mut lexer = Lexer {
             lines,
@@ -775,6 +778,20 @@ mod tests {
             .collect();
         assert_eq!(ops.len(), 1);
         assert_eq!(ops[0].value, "==");
+    }
+
+    #[test]
+    fn test_lexer_strips_bom() {
+        let src = "\u{FEFF}workflow Foo\n";
+        let mut lex = Lexer::new(src, "test.dip");
+        let tok = lex.next_token();
+        assert_eq!(tok.token_type, TokenType::Identifier);
+        assert_eq!(tok.value, "workflow");
+        assert!(
+            lex.diagnostics.is_empty(),
+            "BOM should be stripped silently, got {:?}",
+            lex.diagnostics
+        );
     }
 
     #[test]
