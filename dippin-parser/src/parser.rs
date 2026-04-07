@@ -7,6 +7,9 @@ use crate::error::{Diagnostic, DiagnosticKind, Error, Result};
 use crate::ir::*;
 use crate::lexer::{Lexer, Token, TokenType};
 
+/// Per-production result: `Err(())` signals the caller should sync to a recovery point.
+type ParseStep<T> = std::result::Result<T, ()>;
+
 /// Parser state holding the lexer, diagnostics, and the workflow being built.
 pub struct Parser {
     lexer: Lexer,
@@ -53,7 +56,9 @@ impl Parser {
                 continue;
             }
             if t.token_type == TokenType::Identifier && t.value == "workflow" {
-                self.parse_workflow();
+                if self.parse_workflow().is_err() {
+                    self.sync_to_newline();
+                }
             } else {
                 self.lexer.next_token();
             }
@@ -61,14 +66,15 @@ impl Parser {
     }
 
     /// Parse a workflow declaration: workflow Name\n INDENT body OUTDENT
-    fn parse_workflow(&mut self) {
+    fn parse_workflow(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "workflow"
         let name = self.lexer.next_token().value;
         self.workflow.name = name;
-        self.expect(TokenType::Newline);
-        self.expect(TokenType::Indent);
+        self.expect(TokenType::Newline)?;
+        self.expect(TokenType::Indent)?;
         self.parse_workflow_body();
-        self.expect(TokenType::Outdent);
+        self.expect(TokenType::Outdent)?;
+        Ok(())
     }
 
     /// Parse the indented body of a workflow declaration.
@@ -83,7 +89,9 @@ impl Parser {
                 continue;
             }
             if t.token_type == TokenType::Identifier {
-                self.dispatch_workflow_field(&t.clone());
+                if self.dispatch_workflow_field(&t.clone()).is_err() {
+                    self.sync_to_newline();
+                }
             } else {
                 self.lexer.next_token();
             }
@@ -91,7 +99,7 @@ impl Parser {
     }
 
     /// Route a workflow-level identifier to the right handler.
-    fn dispatch_workflow_field(&mut self, t: &Token) {
+    fn dispatch_workflow_field(&mut self, t: &Token) -> ParseStep<()> {
         match t.value.as_str() {
             "goal" | "start" | "exit" => self.parse_workflow_string_field(t),
             "defaults" => self.parse_defaults(),
@@ -104,9 +112,9 @@ impl Parser {
     }
 
     /// Handle node kinds and unknown identifiers.
-    fn dispatch_workflow_default(&mut self, t: &Token) {
+    fn dispatch_workflow_default(&mut self, t: &Token) -> ParseStep<()> {
         if let Ok(kind) = t.value.parse::<NodeKind>() {
-            self.parse_node(kind);
+            self.parse_node(kind)
         } else {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::Other,
@@ -114,15 +122,16 @@ impl Parser {
                 t.location.clone(),
             ));
             self.lexer.next_token();
+            Ok(())
         }
     }
 
     /// Parse a simple workflow field like "goal: value".
-    fn parse_workflow_string_field(&mut self, t: &Token) {
+    fn parse_workflow_string_field(&mut self, t: &Token) -> ParseStep<()> {
         let field_name = t.value.clone();
         let line = t.location.line;
         self.lexer.next_token(); // consume field name
-        self.expect(TokenType::Colon);
+        self.expect(TokenType::Colon)?;
         let val = self.read_field_value(line);
         match field_name.as_str() {
             "goal" => self.workflow.goal = val,
@@ -130,10 +139,12 @@ impl Parser {
             "exit" => self.workflow.exit = val,
             _ => {}
         }
+        Ok(())
     }
 
     /// Expect a specific token type, recording a diagnostic if it doesn't match.
-    fn expect(&mut self, expected: TokenType) {
+    /// Returns `Err(())` on mismatch so callers can sync to a recovery point.
+    fn expect(&mut self, expected: TokenType) -> ParseStep<Token> {
         let tok = self.lexer.next_token();
         if tok.token_type != expected {
             self.diagnostics.push(Diagnostic::error(
@@ -144,6 +155,20 @@ impl Parser {
                 format!("expected {:?}, got {:?}", expected, tok.token_type),
                 tok.location.clone(),
             ));
+            return Err(());
+        }
+        Ok(tok)
+    }
+
+    /// Advance the token stream past the next newline (or EOF).
+    fn sync_to_newline(&mut self) {
+        loop {
+            let tok = self.lexer.peek_token();
+            if matches!(tok.token_type, TokenType::Newline | TokenType::Eof) {
+                self.lexer.next_token();
+                return;
+            }
+            self.lexer.next_token();
         }
     }
 
@@ -193,12 +218,13 @@ impl Parser {
     // ── Defaults ──────────────────────────────────────────
 
     /// Parse the defaults block.
-    fn parse_defaults(&mut self) {
+    fn parse_defaults(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "defaults"
-        self.expect(TokenType::Newline);
-        self.expect(TokenType::Indent);
+        self.expect(TokenType::Newline)?;
+        self.expect(TokenType::Indent)?;
         self.parse_defaults_body();
-        self.expect(TokenType::Outdent);
+        self.expect(TokenType::Outdent)?;
+        Ok(())
     }
 
     /// Parse fields within the defaults block.
@@ -213,16 +239,25 @@ impl Parser {
                 continue;
             }
             if t.token_type == TokenType::Identifier {
-                let key = t.value.clone();
-                let line = t.location.line;
-                self.lexer.next_token();
-                self.expect(TokenType::Colon);
-                let val = self.read_field_value(line);
-                self.apply_default_field(&key, &val, line);
+                if self.parse_defaults_field().is_err() {
+                    self.sync_to_newline();
+                }
             } else {
                 self.lexer.next_token();
             }
         }
+    }
+
+    /// Parse a single field within the defaults block.
+    fn parse_defaults_field(&mut self) -> ParseStep<()> {
+        let t = self.lexer.peek_token();
+        let key = t.value.clone();
+        let line = t.location.line;
+        self.lexer.next_token();
+        self.expect(TokenType::Colon)?;
+        let val = self.read_field_value(line);
+        self.apply_default_field(&key, &val, line);
+        Ok(())
     }
 
     /// Apply a single default field value.
@@ -258,7 +293,7 @@ impl Parser {
     // ── Nodes ─────────────────────────────────────────────
 
     /// Parse a node declaration: kind ID\n INDENT fields OUTDENT
-    fn parse_node(&mut self, kind: NodeKind) {
+    fn parse_node(&mut self, kind: NodeKind) -> ParseStep<()> {
         self.lexer.next_token(); // kind keyword
         let id = self.lexer.next_token().value;
         let source = self.lexer.peek_token().location.clone();
@@ -273,11 +308,12 @@ impl Parser {
             io: NodeIO::default(),
             source,
         };
-        self.expect(TokenType::Newline);
-        self.expect(TokenType::Indent);
+        self.expect(TokenType::Newline)?;
+        self.expect(TokenType::Indent)?;
         self.parse_node_body(&mut node);
-        self.expect(TokenType::Outdent);
+        self.expect(TokenType::Outdent)?;
         self.workflow.nodes.push(node);
+        Ok(())
     }
 
     /// Parse fields within a node body.
@@ -292,16 +328,25 @@ impl Parser {
                 continue;
             }
             if t.token_type == TokenType::Identifier {
-                let key = t.value.clone();
-                let line = t.location.line;
-                self.lexer.next_token();
-                self.expect(TokenType::Colon);
-                let val = self.read_field_value(line);
-                self.apply_node_field(node, &key, &val, line);
+                if self.parse_node_field(node).is_err() {
+                    self.sync_to_newline();
+                }
             } else {
                 self.lexer.next_token();
             }
         }
+    }
+
+    /// Parse a single field inside a node body.
+    fn parse_node_field(&mut self, node: &mut Node) -> ParseStep<()> {
+        let t = self.lexer.peek_token();
+        let key = t.value.clone();
+        let line = t.location.line;
+        self.lexer.next_token();
+        self.expect(TokenType::Colon)?;
+        let val = self.read_field_value(line);
+        self.apply_node_field(node, &key, &val, line);
+        Ok(())
     }
 
     /// Apply a field to a node, trying common fields first.
@@ -382,20 +427,19 @@ impl Parser {
     // ── Parallel / FanIn ──────────────────────────────────
 
     /// Parse a parallel node (inline or block form).
-    fn parse_parallel(&mut self) {
+    fn parse_parallel(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "parallel"
         let id = self.lexer.next_token().value;
 
         if self.lexer.peek_token().token_type == TokenType::Arrow {
-            self.parse_parallel_inline(&id);
-            return;
+            return self.parse_parallel_inline(&id);
         }
-        self.parse_parallel_block(&id);
+        self.parse_parallel_block(&id)
     }
 
     /// Parse inline form: parallel ID -> target, target
-    fn parse_parallel_inline(&mut self, id: &str) {
-        self.expect(TokenType::Arrow);
+    fn parse_parallel_inline(&mut self, id: &str) -> ParseStep<()> {
+        self.expect(TokenType::Arrow)?;
         let targets = self.parse_comma_list();
         self.workflow.nodes.push(Node {
             id: id.to_string(),
@@ -410,15 +454,16 @@ impl Parser {
             io: NodeIO::default(),
             source: SourceLocation::default(),
         });
-        self.expect(TokenType::Newline);
+        self.expect(TokenType::Newline)?;
+        Ok(())
     }
 
     /// Parse block form with per-branch config.
-    fn parse_parallel_block(&mut self, id: &str) {
-        self.expect(TokenType::Newline);
-        self.expect(TokenType::Indent);
+    fn parse_parallel_block(&mut self, id: &str) -> ParseStep<()> {
+        self.expect(TokenType::Newline)?;
+        self.expect(TokenType::Indent)?;
         let branches = self.parse_parallel_branches();
-        self.expect(TokenType::Outdent);
+        self.expect(TokenType::Outdent)?;
 
         let targets: Vec<String> = branches.iter().map(|b| b.target.clone()).collect();
         self.workflow.nodes.push(Node {
@@ -431,6 +476,7 @@ impl Parser {
             io: NodeIO::default(),
             source: SourceLocation::default(),
         });
+        Ok(())
     }
 
     /// Parse branch declarations inside a parallel block.
@@ -446,7 +492,10 @@ impl Parser {
                 continue;
             }
             if t.token_type == TokenType::Identifier && t.value == "branch" {
-                branches.push(self.parse_one_branch());
+                match self.parse_one_branch() {
+                    Ok(bc) => branches.push(bc),
+                    Err(()) => self.sync_to_newline(),
+                }
             } else {
                 self.lexer.next_token();
             }
@@ -455,9 +504,9 @@ impl Parser {
     }
 
     /// Parse: branch: target\n [INDENT fields OUTDENT]
-    fn parse_one_branch(&mut self) -> BranchConfig {
+    fn parse_one_branch(&mut self) -> ParseStep<BranchConfig> {
         self.lexer.next_token(); // "branch"
-        self.expect(TokenType::Colon);
+        self.expect(TokenType::Colon)?;
         let target = self.lexer.next_token().value;
         let mut bc = BranchConfig {
             target,
@@ -469,12 +518,12 @@ impl Parser {
             self.lexer.next_token();
         }
         if self.lexer.peek_token().token_type != TokenType::Indent {
-            return bc;
+            return Ok(bc);
         }
-        self.expect(TokenType::Indent);
+        self.expect(TokenType::Indent)?;
         self.parse_branch_fields(&mut bc);
-        self.expect(TokenType::Outdent);
-        bc
+        self.expect(TokenType::Outdent)?;
+        Ok(bc)
     }
 
     /// Parse fields within a branch block.
@@ -489,16 +538,8 @@ impl Parser {
                 continue;
             }
             if t.token_type == TokenType::Identifier {
-                let key = t.value.clone();
-                let line = t.location.line;
-                self.lexer.next_token();
-                self.expect(TokenType::Colon);
-                let val = self.read_field_value(line);
-                match key.as_str() {
-                    "model" => bc.model = val,
-                    "provider" => bc.provider = val,
-                    "fidelity" => bc.fidelity = val,
-                    _ => {}
+                if self.parse_branch_field(bc).is_err() {
+                    self.sync_to_newline();
                 }
             } else {
                 self.lexer.next_token();
@@ -506,11 +547,28 @@ impl Parser {
         }
     }
 
+    /// Parse a single field within a branch block.
+    fn parse_branch_field(&mut self, bc: &mut BranchConfig) -> ParseStep<()> {
+        let t = self.lexer.peek_token();
+        let key = t.value.clone();
+        let line = t.location.line;
+        self.lexer.next_token();
+        self.expect(TokenType::Colon)?;
+        let val = self.read_field_value(line);
+        match key.as_str() {
+            "model" => bc.model = val,
+            "provider" => bc.provider = val,
+            "fidelity" => bc.fidelity = val,
+            _ => {}
+        }
+        Ok(())
+    }
+
     /// Parse a fan_in node: fan_in ID <- source, source
-    fn parse_fan_in(&mut self) {
+    fn parse_fan_in(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "fan_in"
         let id = self.lexer.next_token().value;
-        self.expect(TokenType::BackArrow);
+        self.expect(TokenType::BackArrow)?;
         let sources = self.parse_comma_list();
         self.workflow.nodes.push(Node {
             id: id.to_string(),
@@ -522,18 +580,20 @@ impl Parser {
             io: NodeIO::default(),
             source: SourceLocation::default(),
         });
-        self.expect(TokenType::Newline);
+        self.expect(TokenType::Newline)?;
+        Ok(())
     }
 
     // ── Edges ─────────────────────────────────────────────
 
     /// Parse the edges section.
-    fn parse_edges(&mut self) {
+    fn parse_edges(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "edges"
-        self.expect(TokenType::Newline);
-        self.expect(TokenType::Indent);
+        self.expect(TokenType::Newline)?;
+        self.expect(TokenType::Indent)?;
         self.parse_edges_body();
-        self.expect(TokenType::Outdent);
+        self.expect(TokenType::Outdent)?;
+        Ok(())
     }
 
     /// Parse the body of an edges block.
@@ -547,14 +607,16 @@ impl Parser {
                 self.lexer.next_token();
                 continue;
             }
-            self.parse_single_edge();
+            if self.parse_single_edge().is_err() {
+                self.sync_to_newline();
+            }
         }
     }
 
     /// Parse a single edge: from -> to [attributes...]
-    fn parse_single_edge(&mut self) {
+    fn parse_single_edge(&mut self) -> ParseStep<()> {
         let from = self.lexer.next_token().value;
-        self.expect(TokenType::Arrow);
+        self.expect(TokenType::Arrow)?;
         let to = self.lexer.next_token().value;
         let mut edge = Edge {
             from,
@@ -565,13 +627,14 @@ impl Parser {
             restart: false,
             source: SourceLocation::default(),
         };
-        self.parse_edge_attributes(&mut edge);
+        self.parse_edge_attributes(&mut edge)?;
         self.workflow.edges.push(edge);
-        self.expect(TokenType::Newline);
+        self.expect(TokenType::Newline)?;
+        Ok(())
     }
 
     /// Parse optional edge attributes (when, label, weight, restart).
-    fn parse_edge_attributes(&mut self, edge: &mut Edge) {
+    fn parse_edge_attributes(&mut self, edge: &mut Edge) -> ParseStep<()> {
         loop {
             let t = self.lexer.peek_token();
             if t.token_type == TokenType::Newline || t.token_type == TokenType::Eof {
@@ -584,16 +647,16 @@ impl Parser {
                     edge.condition = Some(Condition { raw, parsed: None });
                 }
                 "label" => {
-                    self.expect(TokenType::Colon);
+                    self.expect(TokenType::Colon)?;
                     edge.label = self.lexer.next_token().value;
                 }
                 "weight" => {
-                    self.expect(TokenType::Colon);
+                    self.expect(TokenType::Colon)?;
                     let wt = self.lexer.next_token();
                     edge.weight = self.parse_int(&wt.value, "weight", wt.location.line);
                 }
                 "restart" => {
-                    self.expect(TokenType::Colon);
+                    self.expect(TokenType::Colon)?;
                     edge.restart = self.lexer.next_token().value == "true";
                 }
                 unknown => {
@@ -608,6 +671,7 @@ impl Parser {
                 }
             }
         }
+        Ok(())
     }
 
     /// Read tokens for a condition expression until newline/EOF or a known edge keyword.
@@ -635,12 +699,13 @@ impl Parser {
     // ── Stylesheet ────────────────────────────────────────
 
     /// Parse the stylesheet section.
-    fn parse_stylesheet(&mut self) {
+    fn parse_stylesheet(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "stylesheet"
-        self.expect(TokenType::Colon);
+        self.expect(TokenType::Colon)?;
         let line = self.lexer.peek_token().location.line;
         let val = self.read_field_value(line);
         self.workflow.stylesheet = parse_stylesheet_raw(&val);
+        Ok(())
     }
 
     // ── Helpers ───────────────────────────────────────────
