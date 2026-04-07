@@ -589,26 +589,25 @@ fn is_blank_or_comment(line: &str) -> bool {
     trimmed.is_empty() || trimmed.starts_with('#')
 }
 
-/// Find an unquoted # character in a string.
-/// Handles escaped quotes (`\"`) inside quoted sections correctly.
-fn find_unquoted_hash(s: &str) -> Option<usize> {
-    let bytes = s.as_bytes();
+/// Find an unquoted `#` character in a string, returning the byte offset.
+/// Iterates by `char` rather than byte so that escaped multi-byte characters
+/// (e.g. `\é`) advance by the correct width.
+fn find_unquoted_hash(line: &str) -> Option<usize> {
+    let mut chars = line.char_indices();
     let mut in_quote = false;
-    let mut i = 0;
-    while i < bytes.len() {
-        let ch = bytes[i];
-        if in_quote && ch == b'\\' {
-            // Skip escaped character inside quotes
-            i += 2;
-            continue;
-        }
-        if ch == b'"' {
-            in_quote = !in_quote;
-        }
-        if !in_quote && ch == b'#' {
+    while let Some((i, ch)) = chars.next() {
+        if in_quote {
+            if ch == '\\' {
+                // Consume the escaped char regardless of its UTF-8 width.
+                chars.next();
+            } else if ch == '"' {
+                in_quote = false;
+            }
+        } else if ch == '"' {
+            in_quote = true;
+        } else if ch == '#' {
             return Some(i);
         }
-        i += 1;
     }
     None
 }
@@ -910,6 +909,15 @@ mod tests {
             "bar should be at char column 11, got {}",
             t3.location.column
         );
+    }
+
+    #[test]
+    fn test_find_unquoted_hash_utf8_safe() {
+        // backslash followed by multi-byte char inside a string, then a # outside
+        let src = r#"label "a\é" # comment"#;
+        let result = find_unquoted_hash(src);
+        let expected = src.find("# comment").unwrap();
+        assert_eq!(result, Some(expected));
     }
 
     #[test]
