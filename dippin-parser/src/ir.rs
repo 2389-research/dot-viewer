@@ -224,11 +224,13 @@ pub struct StylesheetRule {
 }
 
 /// StyleSelector identifies what a stylesheet rule targets.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct StyleSelector {
-    pub kind: String,
-    pub value: String,
+pub enum StyleSelector {
+    Universal,
+    Class(String),
+    Id(String),
+    Kind(String),
 }
 
 /// Create a default NodeConfig for a given NodeKind.

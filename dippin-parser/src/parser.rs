@@ -1021,27 +1021,15 @@ fn parse_stylesheet_raw(raw: &str) -> Vec<StylesheetRule> {
 /// Convert a selector string to a StyleSelector.
 fn parse_selector(s: &str) -> StyleSelector {
     if s == "*" {
-        return StyleSelector {
-            kind: "universal".to_string(),
-            value: "*".to_string(),
-        };
+        return StyleSelector::Universal;
     }
     if let Some(rest) = s.strip_prefix('.') {
-        return StyleSelector {
-            kind: "class".to_string(),
-            value: rest.to_string(),
-        };
+        return StyleSelector::Class(rest.to_string());
     }
     if let Some(rest) = s.strip_prefix('#') {
-        return StyleSelector {
-            kind: "id".to_string(),
-            value: rest.to_string(),
-        };
+        return StyleSelector::Id(rest.to_string());
     }
-    StyleSelector {
-        kind: "kind".to_string(),
-        value: s.to_string(),
-    }
+    StyleSelector::Kind(s.to_string())
 }
 
 #[cfg(test)]
