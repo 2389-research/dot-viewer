@@ -68,7 +68,7 @@ impl Parser {
     /// Parse a workflow declaration: workflow Name\n INDENT body OUTDENT
     fn parse_workflow(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "workflow"
-        let name = self.lexer.next_token().value;
+        let name = self.expect_identifier("workflow")?.value;
         self.workflow.name = name;
         self.expect(TokenType::Newline)?;
         self.expect(TokenType::Indent)?;
@@ -153,6 +153,25 @@ impl Parser {
                     found: format!("{:?}", tok.token_type),
                 },
                 format!("expected {:?}, got {:?}", expected, tok.token_type),
+                tok.location.clone(),
+            ));
+            return Err(());
+        }
+        Ok(tok)
+    }
+
+    /// Expect an identifier token after a keyword like `workflow`, `agent`, or an edge side.
+    fn expect_identifier(&mut self, after: &str) -> ParseStep<Token> {
+        let tok = self.lexer.next_token();
+        if tok.token_type != TokenType::Identifier {
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::MissingIdentifier {
+                    after: after.to_string(),
+                },
+                format!(
+                    "expected identifier after `{}`, got {:?}",
+                    after, tok.token_type
+                ),
                 tok.location.clone(),
             ));
             return Err(());
@@ -294,8 +313,8 @@ impl Parser {
 
     /// Parse a node declaration: kind ID\n INDENT fields OUTDENT
     fn parse_node(&mut self, kind: NodeKind) -> ParseStep<()> {
-        self.lexer.next_token(); // kind keyword
-        let id = self.lexer.next_token().value;
+        let kind_tok = self.lexer.next_token(); // kind keyword
+        let id = self.expect_identifier(&kind_tok.value)?.value;
         let source = self.lexer.peek_token().location.clone();
         let config = default_node_config(&kind);
         let mut node = Node {
@@ -429,7 +448,7 @@ impl Parser {
     /// Parse a parallel node (inline or block form).
     fn parse_parallel(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "parallel"
-        let id = self.lexer.next_token().value;
+        let id = self.expect_identifier("parallel")?.value;
 
         if self.lexer.peek_token().token_type == TokenType::Arrow {
             return self.parse_parallel_inline(&id);
@@ -567,7 +586,7 @@ impl Parser {
     /// Parse a fan_in node: fan_in ID <- source, source
     fn parse_fan_in(&mut self) -> ParseStep<()> {
         self.lexer.next_token(); // "fan_in"
-        let id = self.lexer.next_token().value;
+        let id = self.expect_identifier("fan_in")?.value;
         self.expect(TokenType::BackArrow)?;
         let sources = self.parse_comma_list();
         self.workflow.nodes.push(Node {
@@ -615,9 +634,9 @@ impl Parser {
 
     /// Parse a single edge: from -> to [attributes...]
     fn parse_single_edge(&mut self) -> ParseStep<()> {
-        let from = self.lexer.next_token().value;
+        let from = self.expect_identifier("edge from")?.value;
         self.expect(TokenType::Arrow)?;
-        let to = self.lexer.next_token().value;
+        let to = self.expect_identifier("->")?.value;
         let mut edge = Edge {
             from,
             to,
