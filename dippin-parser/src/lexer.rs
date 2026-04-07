@@ -51,7 +51,10 @@ impl Lexer {
         // Strip leading UTF-8 byte-order mark so editors that insert one don't
         // confuse the lexer (matches the Go reference parser).
         let input = input.strip_prefix('\u{FEFF}').unwrap_or(input);
-        let lines: Vec<String> = input.split('\n').map(|s| s.to_string()).collect();
+        // Normalize CRLF and lone CR line endings to LF so downstream
+        // line-splitting works uniformly across platforms.
+        let normalized = input.replace("\r\n", "\n").replace('\r', "\n");
+        let lines: Vec<String> = normalized.split('\n').map(|s| s.to_string()).collect();
         let mut lexer = Lexer {
             lines,
             line: 1,
@@ -792,6 +795,20 @@ mod tests {
             "BOM should be stripped silently, got {:?}",
             lex.diagnostics
         );
+    }
+
+    #[test]
+    fn test_lexer_handles_crlf() {
+        let src = "workflow Foo\r\n  start: A\r\n  exit: A\r\nagent A\r\n  prompt: \"x\"\r\n  model: m\r\n  provider: p\r\n";
+        let wf = crate::parse(src, "test.dip").expect("CRLF should parse");
+        assert_eq!(wf.name, "Foo");
+    }
+
+    #[test]
+    fn test_lexer_handles_cr_only() {
+        let src = "workflow Foo\r  start: A\r  exit: A\ragent A\r  prompt: \"x\"\r  model: m\r  provider: p\r";
+        let wf = crate::parse(src, "test.dip").expect("CR-only should parse");
+        assert_eq!(wf.name, "Foo");
     }
 
     #[test]
