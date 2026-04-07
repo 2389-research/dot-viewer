@@ -68,9 +68,20 @@ impl Parser {
 
     /// Parse a workflow declaration: workflow Name\n INDENT body OUTDENT
     fn parse_workflow(&mut self) -> ParseStep<()> {
+        let kw_loc = self.lexer.peek_token().location.clone();
         self.lexer.next_token(); // "workflow"
-        let name = self.expect_identifier("workflow")?.value;
-        self.workflow.name = name;
+        let name_tok = self.expect_identifier("workflow")?;
+        if !self.workflow.name.is_empty() {
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::DuplicateWorkflow,
+                format!(
+                    "duplicate top-level workflow declaration `{}`",
+                    name_tok.value
+                ),
+                kw_loc,
+            ));
+        }
+        self.workflow.name = name_tok.value;
         self.expect(TokenType::Newline)?;
         self.expect(TokenType::Indent)?;
         self.parse_workflow_body();
@@ -1244,6 +1255,16 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_duplicate_workflow_diagnoses() {
+        let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\nworkflow G\n";
+        let err = crate::parse(src, "t.dip").unwrap_err();
+        assert!(err
+            .diagnostics()
+            .iter()
+            .any(|d| matches!(d.kind, crate::DiagnosticKind::DuplicateWorkflow)));
     }
 
     #[test]
