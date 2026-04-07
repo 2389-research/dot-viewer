@@ -2,6 +2,7 @@
 // ABOUTME: Defines the canonical data model shared between parsing and export.
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 
@@ -201,12 +202,22 @@ pub struct NodeIO {
 }
 
 /// SourceLocation identifies a position in the source file.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SourceLocation {
-    pub file: String,
+    pub file: Arc<str>,
     pub line: usize,
     pub column: usize,
+}
+
+impl Default for SourceLocation {
+    fn default() -> Self {
+        Self {
+            file: Arc::from(""),
+            line: 0,
+            column: 0,
+        }
+    }
 }
 
 /// Edge represents a connection between nodes in the workflow graph.

@@ -2,12 +2,13 @@
 // ABOUTME: Verifies start/exit/edge references point at declared nodes.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use crate::error::{Diagnostic, DiagnosticKind};
 use crate::ir::{NodeConfig, SourceLocation, Workflow};
 
 /// Run semantic validation on a parsed workflow and return any diagnostics.
-pub fn validate(wf: &Workflow, file: &str) -> Vec<Diagnostic> {
+pub fn validate(wf: &Workflow, file: &Arc<str>) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let ids: HashSet<&str> = wf.nodes.iter().map(|n| n.id.as_str()).collect();
 
@@ -16,7 +17,7 @@ pub fn validate(wf: &Workflow, file: &str) -> Vec<Diagnostic> {
             DiagnosticKind::UndefinedNodeReference(target.to_string()),
             format!("{} references undefined node `{}`", role, target),
             SourceLocation {
-                file: file.to_string(),
+                file: Arc::clone(file),
                 line,
                 column: 1,
             },

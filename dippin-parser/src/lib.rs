@@ -26,13 +26,14 @@ pub const MAX_INPUT_SIZE: usize = 10 * 1024 * 1024;
 pub fn parse(source: &str, filename: impl AsRef<std::path::Path>) -> Result<Workflow> {
     let filename = filename.as_ref().to_string_lossy().into_owned();
     if source.len() > MAX_INPUT_SIZE {
+        let file: std::sync::Arc<str> = std::sync::Arc::from(filename);
         return Err(Error::Parse {
-            file: filename.clone(),
+            file: std::sync::Arc::clone(&file),
             diagnostics: vec![Diagnostic::error(
                 DiagnosticKind::Other,
                 format!("input exceeds maximum size of {} bytes", MAX_INPUT_SIZE),
                 crate::ir::SourceLocation {
-                    file: filename,
+                    file,
                     line: 1,
                     column: 1,
                 },

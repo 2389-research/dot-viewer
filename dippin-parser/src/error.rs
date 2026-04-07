@@ -1,6 +1,8 @@
 // ABOUTME: Structured error and diagnostic types for the dippin parser.
 // ABOUTME: Replaces stringly-typed Result<_, String> across the public API.
 
+use std::sync::Arc;
+
 use crate::ir::SourceLocation;
 use thiserror::Error;
 
@@ -14,7 +16,7 @@ pub enum Error {
     /// One or more diagnostics were emitted while parsing.
     #[error("{} diagnostic(s) while parsing {file}", diagnostics.len())]
     Parse {
-        file: String,
+        file: Arc<str>,
         diagnostics: Vec<Diagnostic>,
     },
 }

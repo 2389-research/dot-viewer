@@ -1,6 +1,8 @@
 // ABOUTME: Recursive descent parser for the Dippin workflow language.
 // ABOUTME: Consumes tokens from the lexer and produces an IR Workflow structure.
 
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 
 use crate::duration::Duration;
@@ -16,17 +18,18 @@ pub(crate) struct Parser {
     lexer: Lexer,
     diagnostics: Vec<Diagnostic>,
     workflow: Workflow,
-    filename: String,
+    filename: Arc<str>,
 }
 
 impl Parser {
     /// Create a new parser for the given input.
     pub fn new(input: &str, filename: &str) -> Self {
+        let filename: Arc<str> = Arc::from(filename);
         Parser {
-            lexer: Lexer::new(input, filename),
+            lexer: Lexer::new(input, Arc::clone(&filename)),
             diagnostics: Vec::new(),
             workflow: Workflow::default(),
-            filename: filename.to_string(),
+            filename,
         }
     }
 

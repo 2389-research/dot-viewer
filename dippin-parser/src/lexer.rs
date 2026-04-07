@@ -1,6 +1,8 @@
 // ABOUTME: Indentation-aware tokenizer for the Dippin workflow language.
 // ABOUTME: Produces a flat token stream with explicit INDENT/OUTDENT tokens.
 
+use std::sync::Arc;
+
 use crate::error::{Diagnostic, DiagnosticKind};
 use crate::ir::SourceLocation;
 
@@ -42,13 +44,14 @@ pub struct Lexer {
     indent_stack: Vec<usize>,
     tokens: Vec<Token>,
     token_idx: usize,
-    filename: String,
+    filename: Arc<str>,
     pub(crate) diagnostics: Vec<Diagnostic>,
 }
 
 impl Lexer {
     /// Create a new Lexer and immediately tokenize the input.
-    pub fn new(input: &str, filename: &str) -> Self {
+    pub fn new(input: &str, filename: impl Into<Arc<str>>) -> Self {
+        let filename = filename.into();
         // Strip leading UTF-8 byte-order mark so editors that insert one don't
         // confuse the lexer (matches the Go reference parser).
         let input = input.strip_prefix('\u{FEFF}').unwrap_or(input);
@@ -63,7 +66,7 @@ impl Lexer {
             indent_stack: vec![0],
             tokens: Vec::new(),
             token_idx: 0,
-            filename: filename.to_string(),
+            filename,
             diagnostics: Vec::new(),
         };
         lexer.lex();
