@@ -1040,6 +1040,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse_selector_variants() {
+        assert!(matches!(parse_selector("*"), StyleSelector::Universal));
+        assert!(matches!(parse_selector(".foo"), StyleSelector::Class(s) if s == "foo"));
+        assert!(matches!(parse_selector("#bar"), StyleSelector::Id(s) if s == "bar"));
+        assert!(matches!(parse_selector("agent"), StyleSelector::Kind(s) if s == "agent"));
+    }
+
+    #[test]
     fn test_parse_minimal_workflow() {
         let input = r#"workflow Minimal
   goal: "Test workflow"
