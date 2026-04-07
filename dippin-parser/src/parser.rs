@@ -825,27 +825,27 @@ fn split_key_value(line: &str) -> Option<(String, String)> {
     ))
 }
 
-/// Unquote a double-quoted string, handling basic escape sequences.
+/// Unquote a double-quoted string, handling only `\"` and `\\` escapes.
+/// Go parity: dippin-lang's `unquoteRaw` does not translate `\n`/`\t`/`\r`.
 fn unquote_raw(raw: &str) -> String {
     if raw.len() < 2 || !raw.starts_with('"') || !raw.ends_with('"') {
         return raw.to_string();
     }
     let inner = &raw[1..raw.len() - 1];
     let mut result = String::with_capacity(inner.len());
-    let mut chars = inner.chars();
+    let mut chars = inner.chars().peekable();
     while let Some(ch) = chars.next() {
         if ch == '\\' {
-            match chars.next() {
-                Some('"') => result.push('"'),
-                Some('\\') => result.push('\\'),
-                Some('n') => result.push('\n'),
-                Some('t') => result.push('\t'),
-                Some('r') => result.push('\r'),
-                Some(other) => {
-                    result.push('\\');
-                    result.push(other);
+            match chars.peek() {
+                Some('"') => {
+                    result.push('"');
+                    chars.next();
                 }
-                None => result.push('\\'),
+                Some('\\') => {
+                    result.push('\\');
+                    chars.next();
+                }
+                _ => result.push('\\'),
             }
         } else {
             result.push(ch);
@@ -1167,6 +1167,13 @@ mod tests {
         assert_eq!(unquote_raw("\"hello\""), "hello");
         assert_eq!(unquote_raw("\"he\\\"llo\""), "he\"llo");
         assert_eq!(unquote_raw(""), "");
+    }
+
+    #[test]
+    fn test_unquote_raw_only_handles_quote_and_backslash() {
+        // Go's unquoteRaw only handles \" and \\
+        let result = unquote_raw(r#""line1\nline2""#);
+        assert_eq!(result, r"line1\nline2");
     }
 
     #[test]
