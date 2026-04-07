@@ -86,7 +86,9 @@ fn write_dot_header(b: &mut String, w: &Workflow, opts: &ExportOptions) {
     b.push_str("  edge [fontname=\"Helvetica\"];\n");
 }
 
-/// Map NodeKind to the corresponding DOT shape attribute.
+/// Map each [`NodeKind`] to a Graphviz shape. The mapping mirrors the Go reference
+/// in `dippin-lang/export/dot.go`. Start nodes override to `Mdiamond` and exit
+/// nodes to `Msquare` regardless of their underlying kind.
 fn node_shape(kind: &NodeKind) -> &'static str {
     match kind {
         NodeKind::Agent => "box",

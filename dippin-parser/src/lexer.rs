@@ -1,3 +1,18 @@
+//! # Dippin lexer
+//!
+//! Indentation-aware tokenizer modeled on Python's INDENT/DEDENT scheme.
+//! `indent_stack` holds the stack of currently-active indent columns; the bottom
+//! sentinel is `0`. On each line:
+//!
+//! 1. Compute the leading whitespace count (spaces only — see `check_indent_consistency`).
+//! 2. If `indent > top`, push `indent` and emit `INDENT`.
+//! 3. While `indent < top`, pop and emit `OUTDENT`.
+//! 4. If after popping `indent != top`, emit an `InvalidIndentation` diagnostic.
+//!
+//! Multi-line raw blocks (e.g. `prompt:` / `tool_command:` values) are extracted
+//! by the parser via the `raw_line_tail` helpers, which preserve the original
+//! text minus the common indent prefix.
+
 // ABOUTME: Indentation-aware tokenizer for the Dippin workflow language.
 // ABOUTME: Produces a flat token stream with explicit INDENT/OUTDENT tokens.
 
