@@ -488,6 +488,34 @@ fn test_stylesheet_selector_coverage() {
 }
 
 #[test]
+fn test_edge_weight_and_label() {
+    // ABOUTME: Exercises edge attribute parsing for `weight:` and `label:`
+    // on a single edge using an inline canonical nested workflow.
+    let src = r#"workflow F
+  start: A
+  exit: B
+
+  agent A
+    prompt: x
+    model: m
+    provider: p
+
+  agent B
+    prompt: y
+    model: m
+    provider: p
+
+  edges
+    A -> B  weight: 5  label: "edge-label"
+"#;
+    let wf = parse(src, "f.dip").expect("inline edge fixture should parse");
+    assert_eq!(wf.edges.len(), 1, "expected exactly one edge");
+    let edge = &wf.edges[0];
+    assert_eq!(edge.weight, 5, "edge weight should be parsed");
+    assert_eq!(edge.label, "edge-label", "edge label should be parsed");
+}
+
+#[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
     let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");
