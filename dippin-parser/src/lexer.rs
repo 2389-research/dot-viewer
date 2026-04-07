@@ -158,6 +158,7 @@ impl Lexer {
             return None;
         }
 
+        self.check_indent_consistency(&trimmed, i + 1);
         let indent = line_indent(&trimmed);
         let content = &trimmed[indent..];
 
@@ -178,6 +179,26 @@ impl Lexer {
             },
         });
         None
+    }
+
+    /// Diagnose lines whose leading whitespace mixes tabs and spaces. The
+    /// language requires consistent indentation within a single line; mixing
+    /// the two makes indent depth ambiguous across editors.
+    fn check_indent_consistency(&mut self, line: &str, line_num: usize) {
+        let leading: String = line.chars().take_while(|c| *c == ' ' || *c == '\t').collect();
+        let has_tab = leading.contains('\t');
+        let has_space = leading.contains(' ');
+        if has_tab && has_space {
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::InvalidIndentation("mixed tabs and spaces".into()),
+                "indentation mixes tabs and spaces; use one or the other consistently",
+                SourceLocation {
+                    file: self.filename.clone(),
+                    line: line_num,
+                    column: 1,
+                },
+            ));
+        }
     }
 
     /// Emit INDENT or OUTDENT tokens based on indentation change.
@@ -809,6 +830,20 @@ mod tests {
         let src = "workflow Foo\r  start: A\r  exit: A\ragent A\r  prompt: \"x\"\r  model: m\r  provider: p\r";
         let wf = crate::parse(src, "test.dip").expect("CR-only should parse");
         assert_eq!(wf.name, "Foo");
+    }
+
+    #[test]
+    fn test_lexer_rejects_mixed_indent() {
+        // tab then 2 spaces — clearly mixed
+        let src = "workflow Foo\n\t  goal: bar\n";
+        let err = crate::parse(src, "test.dip").unwrap_err();
+        assert!(
+            err.diagnostics()
+                .iter()
+                .any(|d| matches!(d.kind, crate::DiagnosticKind::InvalidIndentation(_))),
+            "expected InvalidIndentation diagnostic, got {:?}",
+            err.diagnostics()
+        );
     }
 
     #[test]
