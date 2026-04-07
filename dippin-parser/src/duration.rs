@@ -55,16 +55,39 @@ impl Duration {
 
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let secs = self.0.as_secs();
-        if secs == 0 && self.0.as_millis() > 0 {
-            write!(f, "{}ms", self.0.as_millis())
-        } else if secs > 0 && secs.is_multiple_of(3600) {
-            write!(f, "{}h", secs / 3600)
-        } else if secs > 0 && secs.is_multiple_of(60) {
-            write!(f, "{}m", secs / 60)
-        } else {
-            write!(f, "{}s", secs)
+        if self.0.is_zero() {
+            return write!(f, "0s");
         }
+
+        let total_secs = self.0.as_secs();
+        let sub_ms = self.0.subsec_millis() as u64;
+
+        let hours = total_secs / 3600;
+        let minutes = (total_secs % 3600) / 60;
+        let seconds = total_secs % 60;
+
+        let mut wrote = false;
+        if hours > 0 {
+            write!(f, "{}h", hours)?;
+            wrote = true;
+        }
+        if minutes > 0 {
+            write!(f, "{}m", minutes)?;
+            wrote = true;
+        }
+        if seconds > 0 {
+            write!(f, "{}s", seconds)?;
+            wrote = true;
+        }
+        if sub_ms > 0 {
+            write!(f, "{}ms", sub_ms)?;
+            wrote = true;
+        }
+        if !wrote {
+            // Sub-millisecond remainder only (e.g. microseconds); fall back to 0s.
+            write!(f, "0s")?;
+        }
+        Ok(())
     }
 }
 
@@ -121,5 +144,35 @@ mod tests {
     #[test]
     fn display_round_trip_minutes() {
         assert_eq!(Duration::parse("5m").unwrap().to_string(), "5m");
+    }
+
+    #[test]
+    fn display_round_trip_hours_and_minutes() {
+        assert_eq!(Duration::parse("1h30m").unwrap().to_string(), "1h30m");
+    }
+
+    #[test]
+    fn display_round_trip_hours_only() {
+        assert_eq!(Duration::parse("2h").unwrap().to_string(), "2h");
+    }
+
+    #[test]
+    fn display_round_trip_plain_seconds() {
+        assert_eq!(Duration::parse("30s").unwrap().to_string(), "30s");
+    }
+
+    #[test]
+    fn display_round_trip_milliseconds() {
+        assert_eq!(Duration::parse("500ms").unwrap().to_string(), "500ms");
+    }
+
+    #[test]
+    fn display_zero_is_zero_seconds() {
+        assert_eq!(Duration::parse("").unwrap().to_string(), "0s");
+    }
+
+    #[test]
+    fn display_round_trip_full_compound() {
+        assert_eq!(Duration::parse("1h2m3s").unwrap().to_string(), "1h2m3s");
     }
 }
