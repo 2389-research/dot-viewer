@@ -15,6 +15,8 @@ pub struct ExportOptions {
     pub rank_dir: String,
     /// Apply a distinct fill color to nodes with GoalGate: true.
     pub highlight_goal_gates: bool,
+    /// Ordered list of node IDs to highlight as an execution path.
+    pub execution_path: Vec<String>,
 }
 
 /// Render a workflow as a DOT language string.
@@ -83,12 +85,26 @@ fn write_node_dot(b: &mut String, n: &Node, w: &Workflow, opts: &ExportOptions) 
     let mut attrs = BTreeMap::new();
     attrs.insert("shape".to_string(), resolve_node_shape(n, w).to_string());
 
-    let label = if n.label.is_empty() {
+    let base_label = if n.label.is_empty() {
         n.id.clone()
     } else {
         n.label.clone()
     };
+    let label = if let Some(idx) = opts
+        .execution_path
+        .iter()
+        .position(|p| p == &n.id)
+    {
+        format!("[{}] {}", idx + 1, base_label)
+    } else {
+        base_label
+    };
     attrs.insert("label".to_string(), label);
+
+    if opts.execution_path.iter().any(|p| p == &n.id) {
+        attrs.insert("style".to_string(), "bold,filled".to_string());
+        attrs.insert("fillcolor".to_string(), "#e0f0ff".to_string());
+    }
 
     if opts.highlight_goal_gates {
         if let NodeConfig::Agent(cfg) = &n.config {
@@ -563,6 +579,19 @@ mod tests {
         assert_eq!(dot_id("digraph"), "\"digraph\"");
         assert_eq!(dot_id("subgraph"), "\"subgraph\"");
         assert_eq!(dot_id("strict"), "\"strict\"");
+    }
+
+    #[test]
+    fn test_export_with_execution_path() {
+        let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: x\n    model: m\n    provider: p\n  agent B\n    prompt: y\n    model: m\n    provider: p\n  edges\n    A -> B\n";
+        let opts = ExportOptions {
+            execution_path: vec!["A".into(), "B".into()],
+            ..Default::default()
+        };
+        let dot = crate::convert_to_dot_with_options(src, "t.dip", &opts).unwrap();
+        assert!(dot.contains("[1]"), "expected [1] in: {}", dot);
+        assert!(dot.contains("[2]"), "expected [2] in: {}", dot);
+        assert!(dot.contains("fillcolor"));
     }
 
     #[test]
