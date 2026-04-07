@@ -231,15 +231,10 @@ fn dot_id(s: &str) -> String {
     dot_quote(s)
 }
 
-/// DOT language reserved keywords that must always be quoted.
-const DOT_RESERVED: &[&str] = &["node", "edge", "graph", "digraph", "subgraph", "strict"];
-
 /// Check if a string is a valid unquoted DOT identifier.
+// Go parity: dippin-lang's parser does not quote DOT keyword identifiers.
 fn is_simple_dot_id(s: &str) -> bool {
     if s.is_empty() {
-        return false;
-    }
-    if DOT_RESERVED.contains(&s) {
         return false;
     }
     let bytes = s.as_bytes();
@@ -572,13 +567,11 @@ mod tests {
     }
 
     #[test]
-    fn test_dot_id_reserved_keywords_quoted() {
-        assert_eq!(dot_id("node"), "\"node\"");
-        assert_eq!(dot_id("edge"), "\"edge\"");
-        assert_eq!(dot_id("graph"), "\"graph\"");
-        assert_eq!(dot_id("digraph"), "\"digraph\"");
-        assert_eq!(dot_id("subgraph"), "\"subgraph\"");
-        assert_eq!(dot_id("strict"), "\"strict\"");
+    fn test_dot_id_does_not_quote_dot_keywords() {
+        // Go reference does not quote `node`, `edge`, etc.
+        assert_eq!(dot_id("node"), "node");
+        assert_eq!(dot_id("edge"), "edge");
+        assert_eq!(dot_id("subgraph"), "subgraph");
     }
 
     #[test]
