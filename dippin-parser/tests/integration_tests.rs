@@ -292,6 +292,116 @@ fn test_all_go_reference_fixtures_parse() {
 }
 
 #[test]
+fn test_parallel_branches_fixture() {
+    let src = read_testdata("parallel_branches.dip");
+    let wf = parse(&src, "parallel_branches.dip").unwrap();
+    let parallel = wf
+        .nodes
+        .iter()
+        .find(|n| n.kind == NodeKind::Parallel)
+        .unwrap();
+    let dippin_parser::NodeConfig::Parallel(cfg) = &parallel.config else {
+        panic!("expected parallel config");
+    };
+    assert!(
+        !cfg.branches.is_empty(),
+        "parallel block form should have branches"
+    );
+}
+
+// FIXME(parity): test_subgraph_params_fixture omitted because
+// subgraph_params.dip is currently skipped in
+// test_all_go_reference_fixtures_parse — the Rust lexer rejects unquoted
+// values containing `.` or `/`, which trips on `ref: ./review.dip`.
+// Re-enable once the parser handles path-like unquoted values.
+
+#[test]
+fn test_tool_outputs_fixture() {
+    let src = read_testdata("tool_outputs.dip");
+    let wf = parse(&src, "tool_outputs.dip").unwrap();
+    let tool = wf
+        .nodes
+        .iter()
+        .find(|n| n.kind == NodeKind::Tool)
+        .unwrap();
+    let dippin_parser::NodeConfig::Tool(cfg) = &tool.config else {
+        panic!("expected tool config");
+    };
+    assert!(!cfg.outputs.is_empty());
+}
+
+#[test]
+fn test_edge_conditions_fixture() {
+    let src = read_testdata("edge_conditions.dip");
+    let wf = parse(&src, "edge_conditions.dip").unwrap();
+    assert!(wf.edges.iter().any(|e| e.condition.is_some()));
+}
+
+#[test]
+fn test_retry_fields_fixture() {
+    let src = read_testdata("retry_fields.dip");
+    let wf = parse(&src, "retry_fields.dip").unwrap();
+    let agent = wf
+        .nodes
+        .iter()
+        .find(|n| n.kind == NodeKind::Agent)
+        .unwrap();
+    assert!(agent.retry.max_retries > 0);
+}
+
+#[test]
+fn test_response_format_fixture() {
+    let src = read_testdata("response_format.dip");
+    let wf = parse(&src, "response_format.dip").unwrap();
+    let agent = wf
+        .nodes
+        .iter()
+        .find(|n| {
+            n.kind == NodeKind::Agent
+                && matches!(
+                    &n.config,
+                    dippin_parser::NodeConfig::Agent(c) if !c.response_format.is_empty()
+                )
+        })
+        .expect("at least one agent should declare response_format");
+    let dippin_parser::NodeConfig::Agent(cfg) = &agent.config else {
+        panic!("expected agent config");
+    };
+    assert!(!cfg.response_format.is_empty());
+}
+
+#[test]
+fn test_multiline_prompt_fixture() {
+    let src = read_testdata("multiline_prompt.dip");
+    let wf = parse(&src, "multiline_prompt.dip").unwrap();
+    let agent = wf
+        .nodes
+        .iter()
+        .find(|n| n.kind == NodeKind::Agent)
+        .unwrap();
+    let dippin_parser::NodeConfig::Agent(cfg) = &agent.config else {
+        panic!("expected agent config");
+    };
+    assert!(
+        cfg.prompt.contains('\n'),
+        "multiline prompt should preserve newlines"
+    );
+}
+
+#[test]
+fn test_defaults_complex_fixture() {
+    let src = read_testdata("defaults_complex.dip");
+    let wf = parse(&src, "defaults_complex.dip").unwrap();
+    // Note: defaults_complex.dip does not set `fidelity`, so we check
+    // model/provider/max_retries/restart_target instead — the fixture's
+    // purpose is exercising the broader defaults block.
+    assert_eq!(wf.defaults.model, "claude-sonnet-4-6");
+    assert_eq!(wf.defaults.provider, "anthropic");
+    assert!(wf.defaults.max_retries > 0);
+    assert_eq!(wf.defaults.restart_target, "A");
+}
+
+#[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
     let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");
