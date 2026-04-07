@@ -12,7 +12,11 @@ pub mod validate;
 pub use duration::Duration;
 pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
 pub use export_dot::{export_dot as export_dot_string, ExportOptions};
-pub use ir::Workflow;
+pub use ir::{
+    AgentConfig, BranchConfig, Condition, Edge, FanInConfig, HumanConfig, Node, NodeConfig,
+    NodeIO, NodeKind, ParallelConfig, RetryConfig, SourceLocation, StyleSelector, StylesheetRule,
+    SubgraphConfig, ToolConfig, Workflow, WorkflowDefaults,
+};
 pub use parser::Parser;
 
 /// Maximum source file size in bytes accepted by `parse`.
