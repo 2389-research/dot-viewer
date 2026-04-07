@@ -74,7 +74,12 @@ fn test_labeled_nodes() {
 
 #[test]
 fn test_renders_dip_file() {
-    let tmp = std::env::temp_dir().join(format!("dot_viewer_test_{}.dip", std::process::id()));
+    let unique_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let tmp = std::env::temp_dir().join(format!(
+        "dot_viewer_dip_{}_{}.dip",
+        std::process::id(),
+        unique_id
+    ));
     std::fs::write(&tmp, include_str!("../../dippin-parser/testdata/valid_minimal.dip")).unwrap();
 
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_dot-viewer"))
@@ -91,7 +96,12 @@ fn test_renders_dip_file() {
 
 #[test]
 fn test_dip_parse_error_renders_diagnostics() {
-    let tmp = std::env::temp_dir().join(format!("dot_viewer_bad_{}.dip", std::process::id()));
+    let unique_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let tmp = std::env::temp_dir().join(format!(
+        "dot_viewer_dip_bad_{}_{}.dip",
+        std::process::id(),
+        unique_id
+    ));
     std::fs::write(&tmp, "workflow\n  start: nope\n").unwrap();
 
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_dot-viewer"))
