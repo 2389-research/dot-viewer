@@ -2,7 +2,7 @@
 // ABOUTME: Validates parsing and DOT export against known-good inputs.
 
 use dippin_parser::ir::NodeKind;
-use dippin_parser::{parse, parse_to_dot, parse_to_dot_with_options, ExportOptions};
+use dippin_parser::{parse, parse_to_dot, parse_to_dot_with_options, ExportOptions, NodeConfig};
 
 fn testdata_path(name: &str) -> String {
     format!(
@@ -219,6 +219,37 @@ fn test_convert_unicode_to_dot() {
         "expected résumé to round-trip into DOT, got:\n{}",
         dot
     );
+}
+
+#[test]
+fn test_single_node_workflow() {
+    let src = "workflow Solo\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+    let wf = parse(src, "solo.dip").unwrap();
+    assert_eq!(wf.nodes.len(), 1);
+    assert!(wf.edges.is_empty());
+}
+
+#[test]
+fn test_long_lines() {
+    let prompt = "x".repeat(8192);
+    let src = format!(
+        "workflow Long\n  start: A\n  exit: A\n  agent A\n    prompt: \"{}\"\n    model: m\n    provider: p\n",
+        prompt
+    );
+    let wf = parse(&src, "long.dip").unwrap();
+    let NodeConfig::Agent(cfg) = &wf.nodes[0].config else {
+        panic!("expected agent config");
+    };
+    assert_eq!(cfg.prompt.len(), 8192);
+}
+
+#[test]
+fn test_trailing_whitespace_tolerated() {
+    // Trailing whitespace on the workflow header line and on quoted/unquoted
+    // values must not affect parsing.
+    let src = "workflow F   \n  start: A\n  exit: A\n  agent A\n    prompt: x   \n    model: m\n    provider: p\n";
+    let wf = parse(src, "ws.dip").unwrap();
+    assert_eq!(wf.name, "F");
 }
 
 #[test]
