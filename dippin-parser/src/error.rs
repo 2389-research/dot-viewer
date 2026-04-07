@@ -16,18 +16,13 @@ pub enum Error {
         file: String,
         diagnostics: Vec<Diagnostic>,
     },
-    /// I/O error reading a file.
-    #[error("I/O error: {0}")]
-    Io(String),
 }
 
 impl Error {
-    /// Returns the diagnostics if this is a `Parse` error.
+    /// Returns the diagnostics carried by this error.
     pub fn diagnostics(&self) -> &[Diagnostic] {
-        match self {
-            Error::Parse { diagnostics, .. } => diagnostics,
-            _ => &[],
-        }
+        let Error::Parse { diagnostics, .. } = self;
+        diagnostics
     }
 }
 
