@@ -64,10 +64,29 @@ pub use ir::{
 };
 use parser::Parser;
 
-/// Maximum source file size in bytes accepted by `parse`.
+/// Maximum source file size in bytes accepted by [`parse`].
 pub const MAX_INPUT_SIZE: usize = 10 * 1024 * 1024;
 
-/// Parse a dippin source string into a Workflow IR.
+/// Parse a Dippin source string into a [`Workflow`].
+///
+/// # Arguments
+///
+/// * `source` — the `.dip` source text.
+/// * `filename` — used in diagnostics; pass any path-like value.
+///
+/// # Errors
+///
+/// Returns [`Error::Parse`] containing one or more [`Diagnostic`]s if the source
+/// has syntax errors, references undefined nodes, or exceeds [`MAX_INPUT_SIZE`].
+///
+/// # Examples
+///
+/// ```
+/// use dippin_parser::parse;
+/// let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+/// let wf = parse(src, "t.dip").unwrap();
+/// assert_eq!(wf.name, "F");
+/// ```
 pub fn parse(source: &str, filename: impl AsRef<std::path::Path>) -> Result<Workflow> {
     let filename = filename.as_ref().to_string_lossy().into_owned();
     if source.len() > MAX_INPUT_SIZE {
@@ -88,12 +107,57 @@ pub fn parse(source: &str, filename: impl AsRef<std::path::Path>) -> Result<Work
     Parser::new(source, &filename).parse()
 }
 
-/// Parse and convert to DOT in a single call.
+/// Parse a Dippin source string and emit Graphviz DOT in a single call.
+///
+/// Equivalent to calling [`parse`] followed by [`Workflow::to_dot`] with
+/// [`ExportOptions::default`].
+///
+/// # Arguments
+///
+/// * `source` — the `.dip` source text.
+/// * `filename` — used in diagnostics; pass any path-like value.
+///
+/// # Errors
+///
+/// Returns [`Error::Parse`] if the source fails to parse. See [`parse`] for
+/// the full set of failure modes.
+///
+/// # Examples
+///
+/// ```
+/// use dippin_parser::parse_to_dot;
+/// let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+/// let dot = parse_to_dot(src, "t.dip").unwrap();
+/// assert!(dot.contains("digraph F {"));
+/// ```
 pub fn parse_to_dot(source: &str, filename: impl AsRef<std::path::Path>) -> Result<String> {
     parse_to_dot_with_options(source, filename, &ExportOptions::default())
 }
 
-/// Parse and convert to DOT with custom export options.
+/// Parse a Dippin source string and emit Graphviz DOT using the given
+/// [`ExportOptions`].
+///
+/// # Arguments
+///
+/// * `source` — the `.dip` source text.
+/// * `filename` — used in diagnostics; pass any path-like value.
+/// * `opts` — export tuning (rank direction, prompt inclusion, etc.).
+///
+/// # Errors
+///
+/// Returns [`Error::Parse`] if the source fails to parse. See [`parse`] for
+/// the full set of failure modes.
+///
+/// # Examples
+///
+/// ```
+/// use dippin_parser::{parse_to_dot_with_options, ExportOptions, RankDir};
+/// let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+/// let mut opts = ExportOptions::default();
+/// opts.rank_dir = RankDir::LeftRight;
+/// let dot = parse_to_dot_with_options(src, "t.dip", &opts).unwrap();
+/// assert!(dot.contains("rankdir=LR"));
+/// ```
 pub fn parse_to_dot_with_options(
     source: &str,
     filename: impl AsRef<std::path::Path>,
