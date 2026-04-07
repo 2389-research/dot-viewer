@@ -15,8 +15,25 @@ pub use export_dot::{export_dot as export_dot_string, ExportOptions};
 pub use ir::Workflow;
 pub use parser::Parser;
 
+/// Maximum source file size in bytes accepted by `parse`.
+pub const MAX_INPUT_SIZE: usize = 10 * 1024 * 1024;
+
 /// Parse a dippin source string into a Workflow IR.
 pub fn parse(source: &str, filename: &str) -> Result<Workflow> {
+    if source.len() > MAX_INPUT_SIZE {
+        return Err(Error::Parse {
+            file: filename.into(),
+            diagnostics: vec![Diagnostic::error(
+                DiagnosticKind::Other,
+                format!("input exceeds maximum size of {} bytes", MAX_INPUT_SIZE),
+                crate::ir::SourceLocation {
+                    file: filename.into(),
+                    line: 1,
+                    column: 1,
+                },
+            )],
+        });
+    }
     Parser::new(source, filename).parse()
 }
 
@@ -39,6 +56,12 @@ pub fn convert_to_dot_with_options(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_oversize_input_rejected() {
+        let big = "a".repeat(crate::MAX_INPUT_SIZE + 1);
+        assert!(crate::parse(&big, "big.dip").is_err());
+    }
 
     #[test]
     fn test_convert_to_dot_minimal() {
