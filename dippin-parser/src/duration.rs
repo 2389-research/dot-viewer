@@ -53,6 +53,21 @@ impl Duration {
     }
 }
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for Duration {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(&self.to_string())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Duration {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let s = <String as serde::Deserialize>::deserialize(d)?;
+        Duration::parse(&s).map_err(serde::de::Error::custom)
+    }
+}
+
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0.is_zero() {

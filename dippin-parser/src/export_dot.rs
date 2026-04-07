@@ -7,6 +7,7 @@ use std::fmt::Write;
 use crate::ir::*;
 
 /// Layout direction passed to Graphviz as `rankdir`.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum RankDir {
@@ -30,6 +31,7 @@ impl RankDir {
 }
 
 /// Options controlling the DOT output format.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct ExportOptions {

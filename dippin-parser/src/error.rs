@@ -21,6 +21,45 @@ pub enum Error {
     },
 }
 
+// Manual serde impls because the `Parse` variant carries `Arc<str>`, which does
+// not implement `Deserialize` without serde's `rc` feature; we round-trip the
+// file path as a `String`.
+#[cfg(feature = "serde")]
+impl serde::Serialize for Error {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStructVariant;
+        let Error::Parse { file, diagnostics } = self;
+        let mut sv = serializer.serialize_struct_variant("Error", 0, "Parse", 2)?;
+        sv.serialize_field("file", &**file)?;
+        sv.serialize_field("diagnostics", diagnostics)?;
+        sv.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Error {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        enum Helper {
+            Parse {
+                file: String,
+                diagnostics: Vec<Diagnostic>,
+            },
+        }
+        let h = Helper::deserialize(deserializer)?;
+        let Helper::Parse { file, diagnostics } = h;
+        Ok(Error::Parse {
+            file: Arc::from(file),
+            diagnostics,
+        })
+    }
+}
+
 impl Error {
     /// Returns the diagnostics carried by this error.
     pub fn diagnostics(&self) -> &[Diagnostic] {
@@ -30,6 +69,7 @@ impl Error {
 }
 
 /// A single diagnostic produced by the lexer or parser.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Diagnostic {
@@ -39,6 +79,7 @@ pub struct Diagnostic {
     pub location: SourceLocation,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Severity {
@@ -47,6 +88,7 @@ pub enum Severity {
 }
 
 /// Programmatic classification of a diagnostic.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DiagnosticKind {

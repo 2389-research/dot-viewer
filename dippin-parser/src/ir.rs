@@ -9,6 +9,7 @@ use indexmap::IndexMap;
 use crate::duration::Duration;
 
 /// Workflow is the top-level IR structure representing a complete pipeline.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Workflow {
@@ -25,6 +26,7 @@ pub struct Workflow {
 
 /// WorkflowDefaults holds graph-level configuration that applies to all nodes
 /// unless overridden at the node level.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WorkflowDefaults {
@@ -41,6 +43,7 @@ pub struct WorkflowDefaults {
 }
 
 /// Node represents a single step in the workflow.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct Node {
@@ -55,6 +58,7 @@ pub struct Node {
 }
 
 /// NodeKind enumerates node types explicitly.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum NodeKind {
@@ -96,6 +100,7 @@ impl FromStr for NodeKind {
 }
 
 /// NodeConfig holds kind-specific configuration for a node.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum NodeConfig {
@@ -108,6 +113,7 @@ pub enum NodeConfig {
 }
 
 /// AgentConfig holds configuration for LLM agent nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct AgentConfig {
@@ -130,6 +136,7 @@ pub struct AgentConfig {
 }
 
 /// HumanConfig holds configuration for human gate nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct HumanConfig {
@@ -141,6 +148,7 @@ pub struct HumanConfig {
 }
 
 /// ToolConfig holds configuration for shell command nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ToolConfig {
@@ -150,6 +158,7 @@ pub struct ToolConfig {
 }
 
 /// ParallelConfig holds configuration for fan-out nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ParallelConfig {
@@ -158,6 +167,7 @@ pub struct ParallelConfig {
 }
 
 /// BranchConfig holds per-branch configuration for block-form parallel nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct BranchConfig {
@@ -168,6 +178,7 @@ pub struct BranchConfig {
 }
 
 /// FanInConfig holds configuration for join nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FanInConfig {
@@ -175,6 +186,7 @@ pub struct FanInConfig {
 }
 
 /// SubgraphConfig holds configuration for embedded sub-pipeline nodes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SubgraphConfig {
@@ -183,6 +195,7 @@ pub struct SubgraphConfig {
 }
 
 /// RetryConfig specifies retry behavior for a node.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RetryConfig {
@@ -194,6 +207,7 @@ pub struct RetryConfig {
 }
 
 /// NodeIO declares what context keys a node reads and writes.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct NodeIO {
@@ -220,7 +234,40 @@ impl Default for SourceLocation {
     }
 }
 
+// Manual serde impls because `Arc<str>` does not implement `Deserialize` without
+// serde's `rc` feature; we round-trip the file path as a borrowed `&str`.
+#[cfg(feature = "serde")]
+impl serde::Serialize for SourceLocation {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = serializer.serialize_struct("SourceLocation", 3)?;
+        s.serialize_field("file", &*self.file)?;
+        s.serialize_field("line", &self.line)?;
+        s.serialize_field("column", &self.column)?;
+        s.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for SourceLocation {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        struct Helper {
+            file: String,
+            line: usize,
+            column: usize,
+        }
+        let h = Helper::deserialize(deserializer)?;
+        Ok(SourceLocation {
+            file: Arc::from(h.file),
+            line: h.line,
+            column: h.column,
+        })
+    }
+}
+
 /// Edge represents a connection between nodes in the workflow graph.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Edge {
@@ -234,6 +281,7 @@ pub struct Edge {
 }
 
 /// Condition is a raw boolean expression attached to an edge.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Condition {
@@ -241,6 +289,7 @@ pub struct Condition {
 }
 
 /// StylesheetRule pairs a selector with a set of properties.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct StylesheetRule {
@@ -249,6 +298,7 @@ pub struct StylesheetRule {
 }
 
 /// StyleSelector identifies what a stylesheet rule targets.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum StyleSelector {
