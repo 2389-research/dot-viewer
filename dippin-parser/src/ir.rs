@@ -27,9 +27,9 @@ pub struct WorkflowDefaults {
     pub model: String,
     pub provider: String,
     pub retry_policy: String,
-    pub max_retries: i32,
+    pub max_retries: u32,
     pub fidelity: String,
-    pub max_restarts: i32,
+    pub max_restarts: u32,
     pub restart_target: String,
     pub cache_tools: bool,
     pub compaction: String,
@@ -94,7 +94,7 @@ pub struct AgentConfig {
     pub system_prompt: String,
     pub model: String,
     pub provider: String,
-    pub max_turns: i32,
+    pub max_turns: u32,
     pub cmd_timeout: Duration,
     pub cache_tools: bool,
     pub compaction: String,
@@ -159,7 +159,7 @@ pub struct SubgraphConfig {
 #[derive(Debug, Clone, Default)]
 pub struct RetryConfig {
     pub policy: String,
-    pub max_retries: i32,
+    pub max_retries: u32,
     pub base_delay: Duration,
     pub retry_target: String,
     pub fallback_target: String,
@@ -187,7 +187,7 @@ pub struct Edge {
     pub to: String,
     pub label: String,
     pub condition: Option<Condition>,
-    pub weight: i32,
+    pub weight: u32,
     pub restart: bool,
     pub source: SourceLocation,
 }

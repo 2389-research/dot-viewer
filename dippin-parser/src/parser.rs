@@ -291,8 +291,8 @@ impl Parser {
             "restart_target" => self.workflow.defaults.restart_target = val.to_string(),
             "compaction" => self.workflow.defaults.compaction = val.to_string(),
             "on_resume" => self.workflow.defaults.on_resume = val.to_string(),
-            "max_retries" => self.workflow.defaults.max_retries = self.parse_int(val, key, loc),
-            "max_restarts" => self.workflow.defaults.max_restarts = self.parse_int(val, key, loc),
+            "max_retries" => self.workflow.defaults.max_retries = self.parse_u32(val, key, loc),
+            "max_restarts" => self.workflow.defaults.max_restarts = self.parse_u32(val, key, loc),
             "cache_tools" => self.workflow.defaults.cache_tools = val == "true",
             _ => {
                 self.diagnostics.push(Diagnostic::error(
@@ -390,7 +390,7 @@ impl Parser {
             "retry_policy" => node.retry.policy = val.to_string(),
             "retry_target" => node.retry.retry_target = val.to_string(),
             "fallback_target" => node.retry.fallback_target = val.to_string(),
-            "max_retries" => node.retry.max_retries = self.parse_int(val, key, loc),
+            "max_retries" => node.retry.max_retries = self.parse_u32(val, key, loc),
             "base_delay" => node.retry.base_delay = self.parse_duration(val, key, loc),
             _ => return false,
         }
@@ -429,7 +429,7 @@ impl Parser {
             "goal_gate" => cfg.goal_gate = val == "true",
             "auto_status" => cfg.auto_status = val == "true",
             "cache_tools" => cfg.cache_tools = val == "true",
-            "max_turns" => cfg.max_turns = self.parse_int(val, key, loc),
+            "max_turns" => cfg.max_turns = self.parse_u32(val, key, loc),
             "compaction_threshold" => cfg.compaction_threshold = self.parse_float(val, key, loc),
             "cmd_timeout" => cfg.cmd_timeout = self.parse_duration(val, key, loc),
             "params" => cfg.params = parse_params_block(val),
@@ -686,7 +686,7 @@ impl Parser {
                     self.expect(TokenType::Colon)?;
                     let wt = self.lexer.next_token();
                     let wt_loc = wt.location.clone();
-                    edge.weight = self.parse_int(&wt.value, "weight", &wt_loc);
+                    edge.weight = self.parse_u32(&wt.value, "weight", &wt_loc);
                 }
                 "restart" => {
                     self.expect(TokenType::Colon)?;
@@ -749,9 +749,9 @@ impl Parser {
 
     // ── Helpers ───────────────────────────────────────────
 
-    /// Parse an integer from a string, recording a diagnostic on failure.
-    fn parse_int(&mut self, val: &str, key: &str, loc: &SourceLocation) -> i32 {
-        val.parse::<i32>().unwrap_or_else(|_| {
+    /// Parse a non-negative integer from a string, recording a diagnostic on failure.
+    fn parse_u32(&mut self, val: &str, key: &str, loc: &SourceLocation) -> u32 {
+        val.parse::<u32>().unwrap_or_else(|_| {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::InvalidInteger {
                     value: val.to_string(),
