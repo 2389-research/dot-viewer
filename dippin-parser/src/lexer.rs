@@ -229,6 +229,22 @@ impl Lexer {
                 },
             });
         }
+        // After popping, the current indent must land exactly on a previously
+        // pushed level; otherwise it's a dedent to an invented column.
+        if indent != *self.indent_stack.last().unwrap() {
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::InvalidIndentation(format!(
+                    "dedent to column {} does not match any enclosing block",
+                    indent
+                )),
+                "invalid dedent",
+                SourceLocation {
+                    file: self.filename.clone(),
+                    line: self.line,
+                    column: 1,
+                },
+            ));
+        }
     }
 
     /// Emit remaining OUTDENT tokens at end of input.
@@ -836,6 +852,20 @@ mod tests {
     fn test_lexer_rejects_mixed_indent() {
         // tab then 2 spaces — clearly mixed
         let src = "workflow Foo\n\t  goal: bar\n";
+        let err = crate::parse(src, "test.dip").unwrap_err();
+        assert!(
+            err.diagnostics()
+                .iter()
+                .any(|d| matches!(d.kind, crate::DiagnosticKind::InvalidIndentation(_))),
+            "expected InvalidIndentation diagnostic, got {:?}",
+            err.diagnostics()
+        );
+    }
+
+    #[test]
+    fn test_lexer_rejects_invalid_dedent() {
+        // dedent to a level that was never pushed
+        let src = "workflow Foo\n    goal: bar\n  exit: x\n";
         let err = crate::parse(src, "test.dip").unwrap_err();
         assert!(
             err.diagnostics()
