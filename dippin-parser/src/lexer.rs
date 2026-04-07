@@ -592,9 +592,13 @@ impl Lexer {
         if !is_operator_char(ch) {
             return None;
         }
-        if i + 1 < line.len() {
-            let two = &line[i..i + 2];
-            if two == "==" || two == "!=" || two == "<=" || two == ">=" {
+        // Peek the next byte without slicing — `i + 1` may fall inside a multibyte
+        // codepoint, which would panic on `&line[i..i + 2]`. Two-char operators are
+        // all ASCII, so a byte-level check is sufficient and safe.
+        if let Some(&next) = line.as_bytes().get(i + 1) {
+            let pair = [ch, next];
+            if &pair == b"==" || &pair == b"!=" || &pair == b"<=" || &pair == b">=" {
+                let two = std::str::from_utf8(&pair).expect("ASCII operator pair");
                 self.tokens.push(Token {
                     token_type: TokenType::Operator,
                     value: two.to_string(),
