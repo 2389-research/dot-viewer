@@ -48,6 +48,14 @@ struct Cli {
     /// Print the converted DOT source to stdout instead of rendering it.
     #[arg(long)]
     show_dot: bool,
+    /// Suppress non-error stderr output.
+    ///
+    /// Currently a no-op because the CLI has no informational warnings to
+    /// suppress (engine validation is strict via clap, and parse diagnostics
+    /// are real errors). Wired up so future code can honor it without another
+    /// flag rev.
+    #[arg(short, long)]
+    quiet: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, Default)]
