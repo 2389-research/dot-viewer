@@ -192,32 +192,10 @@ pub struct Edge {
     pub source: SourceLocation,
 }
 
-/// Condition is a parsed, validated boolean expression attached to an edge.
+/// Condition is a raw boolean expression attached to an edge.
 #[derive(Debug, Clone)]
 pub struct Condition {
     pub raw: String,
-    pub parsed: Option<ConditionExpr>,
-}
-
-/// ConditionExpr is the AST for edge conditions.
-#[derive(Debug, Clone)]
-pub enum ConditionExpr {
-    Compare {
-        variable: String,
-        op: String,
-        value: String,
-    },
-    And {
-        left: Box<ConditionExpr>,
-        right: Box<ConditionExpr>,
-    },
-    Or {
-        left: Box<ConditionExpr>,
-        right: Box<ConditionExpr>,
-    },
-    Not {
-        inner: Box<ConditionExpr>,
-    },
 }
 
 /// StylesheetRule pairs a selector with a set of properties.

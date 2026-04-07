@@ -676,7 +676,7 @@ impl Parser {
             match attr.value.as_str() {
                 "when" => {
                     let raw = self.read_condition_raw();
-                    edge.condition = Some(Condition { raw, parsed: None });
+                    edge.condition = Some(Condition { raw });
                 }
                 "label" => {
                     self.expect(TokenType::Colon)?;

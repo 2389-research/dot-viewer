@@ -179,11 +179,7 @@ fn write_edge_dot(b: &mut String, e: &Edge) {
     }
 
     if let Some(cond) = &e.condition {
-        let cond_str = if let Some(parsed) = &cond.parsed {
-            format_condition(parsed)
-        } else {
-            cond.raw.clone()
-        };
+        let cond_str = cond.raw.clone();
         if !cond_str.is_empty() {
             let cond_str = lower_condition_namespaces(&cond_str);
             if e.label.is_empty() {
@@ -287,57 +283,6 @@ fn escape_newlines(s: &str) -> String {
 /// Strip the ctx. prefix from condition variables for DOT output.
 fn lower_condition_namespaces(cond: &str) -> String {
     cond.replace("ctx.", "")
-}
-
-// ── Condition formatting ─────────────────────────────────
-
-const PREC_OR: u8 = 1;
-const PREC_AND: u8 = 2;
-const PREC_NOT: u8 = 3;
-
-/// Format a condition expression as a string.
-fn format_condition(expr: &ConditionExpr) -> String {
-    format_condition_expr(expr, 0)
-}
-
-fn format_condition_expr(expr: &ConditionExpr, parent_prec: u8) -> String {
-    match expr {
-        ConditionExpr::Compare {
-            variable,
-            op,
-            value,
-        } => {
-            let variable = variable.trim_start_matches("ctx.");
-            format!("{} {} {}", variable, op, value)
-        }
-        ConditionExpr::And { left, right } => {
-            let s = format!(
-                "{} and {}",
-                format_condition_expr(left, PREC_AND),
-                format_condition_expr(right, PREC_AND)
-            );
-            if parent_prec != 0 && parent_prec != PREC_AND {
-                format!("({})", s)
-            } else {
-                s
-            }
-        }
-        ConditionExpr::Or { left, right } => {
-            let s = format!(
-                "{} or {}",
-                format_condition_expr(left, PREC_OR),
-                format_condition_expr(right, PREC_OR)
-            );
-            if parent_prec != 0 && parent_prec != PREC_OR {
-                format!("({})", s)
-            } else {
-                s
-            }
-        }
-        ConditionExpr::Not { inner } => {
-            format!("not {}", format_condition_expr(inner, PREC_NOT))
-        }
-    }
 }
 
 #[cfg(test)]
@@ -459,7 +404,6 @@ mod tests {
                 label: "pass".to_string(),
                 condition: Some(Condition {
                     raw: "ctx.outcome = success".to_string(),
-                    parsed: None,
                 }),
                 weight: 0,
                 restart: false,
@@ -482,88 +426,6 @@ mod tests {
         assert_eq!(node_shape(&NodeKind::Parallel), "component");
         assert_eq!(node_shape(&NodeKind::FanIn), "tripleoctagon");
         assert_eq!(node_shape(&NodeKind::Subgraph), "tab");
-    }
-
-    #[test]
-    fn test_format_condition_expr() {
-        let expr = ConditionExpr::Compare {
-            variable: "ctx.outcome".to_string(),
-            op: "=".to_string(),
-            value: "success".to_string(),
-        };
-        assert_eq!(format_condition(&expr), "outcome = success");
-    }
-
-    #[test]
-    fn test_format_nested_and_or() {
-        // And(Compare(a), Or(Compare(b), Compare(c))) → "a and (b or c)"
-        let expr = ConditionExpr::And {
-            left: Box::new(ConditionExpr::Compare {
-                variable: "ctx.x".into(), op: "=".into(), value: "1".into(),
-            }),
-            right: Box::new(ConditionExpr::Or {
-                left: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.y".into(), op: "=".into(), value: "2".into(),
-                }),
-                right: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.z".into(), op: "=".into(), value: "3".into(),
-                }),
-            }),
-        };
-        assert_eq!(format_condition(&expr), "x = 1 and (y = 2 or z = 3)");
-    }
-
-    #[test]
-    fn test_format_nested_and_and() {
-        // And(Compare(a), And(Compare(b), Compare(c))) → "a and b and c"
-        let expr = ConditionExpr::And {
-            left: Box::new(ConditionExpr::Compare {
-                variable: "ctx.a".into(), op: "=".into(), value: "1".into(),
-            }),
-            right: Box::new(ConditionExpr::And {
-                left: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.b".into(), op: "=".into(), value: "2".into(),
-                }),
-                right: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.c".into(), op: "=".into(), value: "3".into(),
-                }),
-            }),
-        };
-        assert_eq!(format_condition(&expr), "a = 1 and b = 2 and c = 3");
-    }
-
-    #[test]
-    fn test_format_nested_or_and() {
-        // Or(Compare(a), And(Compare(b), Compare(c))) → "a or (b and c)"
-        let expr = ConditionExpr::Or {
-            left: Box::new(ConditionExpr::Compare {
-                variable: "ctx.a".into(), op: "=".into(), value: "1".into(),
-            }),
-            right: Box::new(ConditionExpr::And {
-                left: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.b".into(), op: "=".into(), value: "2".into(),
-                }),
-                right: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.c".into(), op: "=".into(), value: "3".into(),
-                }),
-            }),
-        };
-        assert_eq!(format_condition(&expr), "a = 1 or (b = 2 and c = 3)");
-    }
-
-    #[test]
-    fn test_format_not_with_and() {
-        let expr = ConditionExpr::Not {
-            inner: Box::new(ConditionExpr::And {
-                left: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.a".into(), op: "=".into(), value: "1".into(),
-                }),
-                right: Box::new(ConditionExpr::Compare {
-                    variable: "ctx.b".into(), op: "=".into(), value: "2".into(),
-                }),
-            }),
-        };
-        assert_eq!(format_condition(&expr), "not (a = 1 and b = 2)");
     }
 
     #[test]
