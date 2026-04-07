@@ -30,3 +30,4 @@ indexmap = "2"
 [dev-dependencies]
 serde_json = "1"
 dot-parser = { path = "../dot-parser" }
+proptest = "1"
