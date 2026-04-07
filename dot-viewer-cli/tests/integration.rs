@@ -90,6 +90,23 @@ fn test_renders_dip_file() {
 }
 
 #[test]
+fn test_dip_parse_error_renders_diagnostics() {
+    let tmp = std::env::temp_dir().join(format!("dot_viewer_bad_{}.dip", std::process::id()));
+    std::fs::write(&tmp, "workflow\n  start: nope\n").unwrap();
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_dot-viewer"))
+        .arg(&tmp)
+        .output()
+        .unwrap();
+
+    let _ = std::fs::remove_file(&tmp);
+    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(65));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains(".dip:"), "expected file path in diagnostic, got: {}", stderr);
+}
+
+#[test]
 fn test_empty_graph() {
     let output = run_cli(&[], "digraph { }");
     // Empty graph should produce minimal or empty output
