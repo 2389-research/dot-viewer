@@ -57,6 +57,23 @@ $ dot-viewer graph.dot
 
 A SvelteKit web editor with CodeMirror and in-browser Graphviz rendering via WASM.
 
+## Dippin (.dip) support
+
+dot-viewer now reads [Dippin DSL](https://github.com/2389-research/dippin-lang)
+files in addition to Graphviz DOT. `.dip` files are auto-detected by extension
+and converted to DOT internally before rendering.
+
+### CLI
+
+```bash
+dot-viewer workflow.dip
+```
+
+### Architecture
+
+The `dippin-parser` crate handles lexing, parsing, and DOT export. See
+`dippin-parser/README.md` for library usage.
+
 ## Architecture
 
 ```text
