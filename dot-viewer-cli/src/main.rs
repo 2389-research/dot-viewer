@@ -5,7 +5,7 @@ mod grid;
 mod plain;
 mod render;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use dot_core::{render_dot_plain, LayoutEngine};
 use dot_parser::{parse_dot, Attribute, DotStatement};
 use std::collections::HashMap;
@@ -27,21 +27,31 @@ struct Cli {
     #[arg(short, long)]
     verbose: bool,
     /// Graphviz layout engine
-    #[arg(long, default_value = "dot")]
-    engine: String,
+    #[arg(long, value_enum, default_value_t = Engine::Dot)]
+    engine: Engine,
 }
 
-fn parse_engine(name: &str) -> LayoutEngine {
-    match name {
-        "dot" => LayoutEngine::Dot,
-        "neato" => LayoutEngine::Neato,
-        "fdp" => LayoutEngine::Fdp,
-        "circo" => LayoutEngine::Circo,
-        "twopi" => LayoutEngine::Twopi,
-        "sfdp" => LayoutEngine::Sfdp,
-        other => {
-            eprintln!("Unknown engine '{}', using dot", other);
-            LayoutEngine::Dot
+// NOTE: dot-core's LayoutEngine only supports these six engines, so Patchwork
+// and Osage from the original plan are intentionally omitted here.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum Engine {
+    Dot,
+    Neato,
+    Fdp,
+    Sfdp,
+    Twopi,
+    Circo,
+}
+
+impl From<Engine> for LayoutEngine {
+    fn from(e: Engine) -> Self {
+        match e {
+            Engine::Dot => LayoutEngine::Dot,
+            Engine::Neato => LayoutEngine::Neato,
+            Engine::Fdp => LayoutEngine::Fdp,
+            Engine::Sfdp => LayoutEngine::Sfdp,
+            Engine::Twopi => LayoutEngine::Twopi,
+            Engine::Circo => LayoutEngine::Circo,
         }
     }
 }
@@ -105,7 +115,7 @@ fn main() {
 
     let source = resolve_dot_source(&cli.file, &raw_source);
 
-    let layout_engine = parse_engine(&cli.engine);
+    let layout_engine: LayoutEngine = cli.engine.into();
 
     // Get Graphviz plain format layout
     let plain_output = render_dot_plain(source.clone(), layout_engine).unwrap_or_else(|e| {
