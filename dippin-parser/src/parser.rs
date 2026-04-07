@@ -687,15 +687,21 @@ impl Parser {
                     self.expect(TokenType::Colon)?;
                     edge.restart = self.lexer.next_token().value == "true";
                 }
-                unknown => {
-                    self.diagnostics.push(Diagnostic::error(
-                        DiagnosticKind::UnknownField {
-                            scope: "edge".to_string(),
-                            name: unknown.to_string(),
-                        },
-                        format!("unknown edge attribute {:?}", unknown),
-                        attr.location.clone(),
-                    ));
+                _ => {
+                    // Go parity: dippin-lang silently ignores unknown edge
+                    // attributes; consume any value tokens up to the next
+                    // attribute keyword or end-of-line and continue.
+                    let _ = attr;
+                    if self.lexer.peek_token().token_type == TokenType::Colon {
+                        self.lexer.next_token();
+                        if !matches!(
+                            self.lexer.peek_token().token_type,
+                            TokenType::Newline | TokenType::Eof
+                        ) {
+                            self.lexer.next_token();
+                        }
+                    }
+                    continue;
                 }
             }
         }
@@ -1161,6 +1167,13 @@ mod tests {
         assert_eq!(unquote_raw("\"hello\""), "hello");
         assert_eq!(unquote_raw("\"he\\\"llo\""), "he\"llo");
         assert_eq!(unquote_raw(""), "");
+    }
+
+    #[test]
+    fn test_unknown_edge_attribute_is_silent() {
+        // Go reference silently ignores unknown edge attributes
+        let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: x\n    model: m\n    provider: p\n  agent B\n    prompt: y\n    model: m\n    provider: p\n  edges\n    A -> B foo: bar\n";
+        crate::parse(src, "t.dip").expect("unknown edge attr should be ignored");
     }
 
     #[test]
