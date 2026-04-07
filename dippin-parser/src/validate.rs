@@ -23,7 +23,7 @@ pub fn validate(wf: &Workflow, file: &str) -> Vec<Diagnostic> {
         ));
     };
 
-    let mut check = |diags: &mut Vec<Diagnostic>, role: &str, target: &str, line: usize| {
+    let check = |diags: &mut Vec<Diagnostic>, role: &str, target: &str, line: usize| {
         if !target.is_empty() && !ids.contains(target) {
             push(diags, role, target, line);
         }
