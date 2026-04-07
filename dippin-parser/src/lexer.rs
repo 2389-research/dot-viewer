@@ -175,7 +175,7 @@ impl Lexer {
             location: SourceLocation {
                 file: self.filename.clone(),
                 line: self.line,
-                column: line.len() + 1,
+                column: line.chars().count() + 1,
             },
         });
         None
@@ -304,7 +304,7 @@ impl Lexer {
             location: SourceLocation {
                 file: self.filename.clone(),
                 line: self.line,
-                column: line.len() + 1,
+                column: line.chars().count() + 1,
             },
         });
         None
@@ -392,8 +392,13 @@ impl Lexer {
     }
 
     /// Tokenize a single line of content (after indent has been handled).
+    /// Columns are reported as 1-based character offsets so that multi-byte
+    /// UTF-8 sequences don't inflate the reported column.
     fn lex_line(&mut self, line: &str) {
         let mut i = 0;
+        // `col_offset` is the 1-based char column of `line[0]` in the original
+        // source line. `self.col` starts at 1; the indent prefix is pure ASCII
+        // so its char count equals its byte count.
         let col_offset = self.col + *self.indent_stack.last().unwrap();
 
         while i < line.len() {
@@ -401,10 +406,11 @@ impl Lexer {
             if i >= line.len() {
                 break;
             }
+            let char_col = col_offset + line[..i].chars().count();
             let loc = SourceLocation {
                 file: self.filename.clone(),
                 line: self.line,
-                column: col_offset + i,
+                column: char_col,
             };
             i = self.lex_one_token(line, i, loc);
         }
@@ -873,6 +879,27 @@ mod tests {
                 .any(|d| matches!(d.kind, crate::DiagnosticKind::InvalidIndentation(_))),
             "expected InvalidIndentation diagnostic, got {:?}",
             err.diagnostics()
+        );
+    }
+
+    #[test]
+    fn test_lexer_columns_are_char_offsets() {
+        // 'é' is 2 bytes in UTF-8; tokens after a multi-byte char inside a
+        // quoted string must still report their column in characters.
+        let src = "label \"é\" bar\n";
+        let mut lex = Lexer::new(src, "t.dip");
+        let t1 = lex.next_token();
+        assert_eq!(t1.value, "label");
+        assert_eq!(t1.location.column, 1);
+        let t2 = lex.next_token();
+        assert_eq!(t2.token_type, TokenType::Literal);
+        assert_eq!(t2.location.column, 7);
+        let t3 = lex.next_token();
+        assert_eq!(t3.value, "bar");
+        assert_eq!(
+            t3.location.column, 11,
+            "bar should be at char column 11, got {}",
+            t3.location.column
         );
     }
 
