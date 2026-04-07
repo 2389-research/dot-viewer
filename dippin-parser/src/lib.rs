@@ -1,22 +1,24 @@
 // ABOUTME: Public API for the dippin parser and DOT exporter.
 // ABOUTME: Provides parse() and export_dot() functions for converting .dip files to DOT format.
 
+pub mod error;
 pub mod export_dot;
 pub mod ir;
 pub mod lexer;
 pub mod parser;
 
+pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
 pub use export_dot::{export_dot as export_dot_string, ExportOptions};
 pub use ir::Workflow;
 pub use parser::Parser;
 
 /// Parse a dippin source string into a Workflow IR.
-pub fn parse(source: &str, filename: &str) -> Result<Workflow, String> {
+pub fn parse(source: &str, filename: &str) -> std::result::Result<Workflow, String> {
     Parser::new(source, filename).parse()
 }
 
 /// Convert a dippin source string directly to DOT format.
-pub fn convert_to_dot(source: &str, filename: &str) -> Result<String, String> {
+pub fn convert_to_dot(source: &str, filename: &str) -> std::result::Result<String, String> {
     let wf = parse(source, filename)?;
     Ok(export_dot_string(&wf, &ExportOptions::default()))
 }
@@ -26,7 +28,7 @@ pub fn convert_to_dot_with_options(
     source: &str,
     filename: &str,
     opts: &ExportOptions,
-) -> Result<String, String> {
+) -> std::result::Result<String, String> {
     let wf = parse(source, filename)?;
     Ok(export_dot_string(&wf, opts))
 }

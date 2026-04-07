@@ -170,7 +170,7 @@ pub struct NodeIO {
 }
 
 /// SourceLocation identifies a position in the source file.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SourceLocation {
     pub file: String,
     pub line: usize,
