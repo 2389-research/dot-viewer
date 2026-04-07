@@ -452,16 +452,18 @@ impl Lexer {
         loc: &SourceLocation,
     ) -> Option<usize> {
         let ch = line.as_bytes()[i];
-        let tok_type = match ch {
-            b':' => TokenType::Colon,
-            b',' => TokenType::Comma,
-            b'(' => TokenType::LParen,
-            b')' => TokenType::RParen,
+        // Map directly to the static string form so we don't round-trip a
+        // byte through `char` (which would silently mishandle non-ASCII).
+        let (tok_type, value): (TokenType, &'static str) = match ch {
+            b':' => (TokenType::Colon, ":"),
+            b',' => (TokenType::Comma, ","),
+            b'(' => (TokenType::LParen, "("),
+            b')' => (TokenType::RParen, ")"),
             _ => return None,
         };
         self.tokens.push(Token {
             token_type: tok_type,
-            value: String::from(ch as char),
+            value: value.to_string(),
             location: loc.clone(),
         });
         Some(i + 1)
@@ -505,9 +507,16 @@ impl Lexer {
                 return Some(i + 2);
             }
         }
+        let value: &'static str = match ch {
+            b'=' => "=",
+            b'!' => "!",
+            b'<' => "<",
+            b'>' => ">",
+            _ => return None,
+        };
         self.tokens.push(Token {
             token_type: TokenType::Operator,
-            value: String::from(ch as char),
+            value: value.to_string(),
             location: loc.clone(),
         });
         Some(i + 1)
