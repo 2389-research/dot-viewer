@@ -36,9 +36,13 @@ impl Parser {
         // Drain any diagnostics emitted by the lexer
         let lex_diags = std::mem::take(&mut self.lexer.diagnostics);
         self.diagnostics.extend(lex_diags);
-        // Semantic validation against the IR (start/exit/edge references).
-        let validate_diags = crate::validate::validate(&self.workflow, &self.filename);
-        self.diagnostics.extend(validate_diags);
+        // Semantic validation against the IR — only run when no prior parse
+        // errors exist, so spurious UndefinedNodeReference diagnostics don't
+        // pile on top of the underlying syntax error.
+        if self.diagnostics.is_empty() {
+            let validate_diags = crate::validate::validate(&self.workflow, &self.filename);
+            self.diagnostics.extend(validate_diags);
+        }
         if self.workflow.name.is_empty() && self.workflow.nodes.is_empty() {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::EmptyWorkflow,
@@ -1279,6 +1283,30 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_validation_skipped_when_parse_errors_exist() {
+        // This fixture has both a parse-time UnknownField (`bogus: 1`) AND an
+        // undefined node reference (`exit: Missing`). Validation should be
+        // suppressed so we only see the underlying parse error.
+        let src = "workflow F\n  start: A\n  exit: Missing\n  agent A\n    prompt: x\n    bogus: 1\n    model: m\n    provider: p\n";
+        let err = crate::parse(src, "t.dip").unwrap_err();
+        let diags = err.diagnostics();
+        assert!(
+            diags
+                .iter()
+                .any(|d| matches!(d.kind, crate::DiagnosticKind::UnknownField { .. })),
+            "expected UnknownField diagnostic, got: {:?}",
+            diags
+        );
+        assert!(
+            !diags
+                .iter()
+                .any(|d| matches!(d.kind, crate::DiagnosticKind::UndefinedNodeReference(_))),
+            "validation should be suppressed when parse errors exist, got: {:?}",
+            diags
+        );
     }
 
     #[test]
