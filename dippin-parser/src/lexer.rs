@@ -393,26 +393,35 @@ impl Lexer {
 
     /// Tokenize a single line of content (after indent has been handled).
     /// Columns are reported as 1-based character offsets so that multi-byte
-    /// UTF-8 sequences don't inflate the reported column.
+    /// UTF-8 sequences don't inflate the reported column. We maintain a
+    /// running `char_col` cursor alongside the byte cursor `i` so the char
+    /// position is computed in O(total chars) rather than O(tokens * bytes).
     fn lex_line(&mut self, line: &str) {
         let mut i = 0;
         // `col_offset` is the 1-based char column of `line[0]` in the original
         // source line. `self.col` starts at 1; the indent prefix is pure ASCII
         // so its char count equals its byte count.
         let col_offset = self.col + *self.indent_stack.last().unwrap();
+        let mut char_col = col_offset;
 
         while i < line.len() {
+            let ws_start = i;
             i = skip_whitespace(line, i);
+            // Leading whitespace is ASCII (space/tab), so byte count == char count.
+            char_col += i - ws_start;
             if i >= line.len() {
                 break;
             }
-            let char_col = col_offset + line[..i].chars().count();
             let loc = SourceLocation {
                 file: self.filename.clone(),
                 line: self.line,
                 column: char_col,
             };
-            i = self.lex_one_token(line, i, loc);
+            let new_i = self.lex_one_token(line, i, loc);
+            // Advance the char cursor by the true char width of the bytes
+            // the token consumed (quoted strings may hold multi-byte chars).
+            char_col += line[i..new_i].chars().count();
+            i = new_i;
         }
     }
 
@@ -909,6 +918,52 @@ mod tests {
             "bar should be at char column 11, got {}",
             t3.location.column
         );
+    }
+
+    #[test]
+    fn test_lexer_columns_after_multiple_multibyte_tokens() {
+        // Two quoted strings each containing multi-byte chars; the trailing
+        // identifier must be reported at the correct char column even though
+        // the earlier tokens span more bytes than chars.
+        let src = "label \"é\" note \"ü\" tail\n";
+        // char layout (1-based):
+        //  1 l
+        //  2 a
+        //  3 b
+        //  4 e
+        //  5 l
+        //  6 space
+        //  7 "
+        //  8 é
+        //  9 "
+        // 10 space
+        // 11 n
+        // 12 o
+        // 13 t
+        // 14 e
+        // 15 space
+        // 16 "
+        // 17 ü
+        // 18 "
+        // 19 space
+        // 20 t (tail starts here)
+        let mut lex = Lexer::new(src, "t.dip");
+        let mut saw_tail = false;
+        loop {
+            let t = lex.next_token();
+            if t.token_type == TokenType::Eof {
+                break;
+            }
+            if t.value == "tail" {
+                assert_eq!(
+                    t.location.column, 20,
+                    "tail should be at char column 20, got {}",
+                    t.location.column
+                );
+                saw_tail = true;
+            }
+        }
+        assert!(saw_tail, "did not encounter tail token");
     }
 
     #[test]
