@@ -1,7 +1,7 @@
 // ABOUTME: Recursive descent parser for the Dippin workflow language.
 // ABOUTME: Consumes tokens from the lexer and produces an IR Workflow structure.
 
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use crate::duration::Duration;
 use crate::error::{Diagnostic, DiagnosticKind, Error, Result};
@@ -918,8 +918,8 @@ impl Parser {
 }
 
 /// Parse a raw block of key: value lines into a map.
-fn parse_params_block(raw: &str) -> HashMap<String, String> {
-    let mut params = HashMap::new();
+fn parse_params_block(raw: &str) -> IndexMap<String, String> {
+    let mut params = IndexMap::new();
     for line in raw.split('\n') {
         let line = line.trim();
         if line.is_empty() {
@@ -989,7 +989,7 @@ fn parse_stylesheet_raw(raw: &str) -> Vec<StylesheetRule> {
         let indent = lines[i].len() - lines[i].trim_start().len();
         if indent == 0 {
             let selector = parse_selector(trimmed);
-            let mut properties = HashMap::new();
+            let mut properties = IndexMap::new();
             i += 1;
             while i < lines.len() {
                 let line = lines[i];

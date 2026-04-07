@@ -1,8 +1,9 @@
 // ABOUTME: Intermediate representation types for Dippin workflows.
 // ABOUTME: Defines the canonical data model shared between parsing and export.
 
-use std::collections::HashMap;
 use std::str::FromStr;
+
+use indexmap::IndexMap;
 
 use crate::duration::Duration;
 
@@ -111,7 +112,7 @@ pub struct AgentConfig {
     pub goal_gate: bool,
     pub response_format: String,
     pub response_schema: String,
-    pub params: HashMap<String, String>,
+    pub params: IndexMap<String, String>,
 }
 
 /// HumanConfig holds configuration for human gate nodes.
@@ -164,7 +165,7 @@ pub struct FanInConfig {
 #[non_exhaustive]
 pub struct SubgraphConfig {
     pub ref_path: String,
-    pub params: HashMap<String, String>,
+    pub params: IndexMap<String, String>,
 }
 
 /// RetryConfig specifies retry behavior for a node.
@@ -220,7 +221,7 @@ pub struct Condition {
 #[non_exhaustive]
 pub struct StylesheetRule {
     pub selector: StyleSelector,
-    pub properties: HashMap<String, String>,
+    pub properties: IndexMap<String, String>,
 }
 
 /// StyleSelector identifies what a stylesheet rule targets.
@@ -237,7 +238,7 @@ pub enum StyleSelector {
 pub fn default_node_config(kind: &NodeKind) -> NodeConfig {
     match kind {
         NodeKind::Agent => NodeConfig::Agent(AgentConfig {
-            params: HashMap::new(),
+            params: IndexMap::new(),
             ..Default::default()
         }),
         NodeKind::Human => NodeConfig::Human(HumanConfig::default()),
@@ -245,7 +246,7 @@ pub fn default_node_config(kind: &NodeKind) -> NodeConfig {
         NodeKind::Parallel => NodeConfig::Parallel(ParallelConfig::default()),
         NodeKind::FanIn => NodeConfig::FanIn(FanInConfig::default()),
         NodeKind::Subgraph => NodeConfig::Subgraph(SubgraphConfig {
-            params: HashMap::new(),
+            params: IndexMap::new(),
             ..Default::default()
         }),
     }
