@@ -4,6 +4,8 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use crate::duration::Duration;
+
 /// Workflow is the top-level IR structure representing a complete pipeline.
 #[derive(Debug, Clone, Default)]
 pub struct Workflow {
@@ -92,7 +94,7 @@ pub struct AgentConfig {
     pub model: String,
     pub provider: String,
     pub max_turns: i32,
-    pub cmd_timeout: String,
+    pub cmd_timeout: Duration,
     pub cache_tools: bool,
     pub compaction: String,
     pub compaction_threshold: f64,
@@ -119,7 +121,7 @@ pub struct HumanConfig {
 #[derive(Debug, Clone, Default)]
 pub struct ToolConfig {
     pub command: String,
-    pub timeout: String,
+    pub timeout: Duration,
     pub outputs: Vec<String>,
 }
 
@@ -157,7 +159,7 @@ pub struct SubgraphConfig {
 pub struct RetryConfig {
     pub policy: String,
     pub max_retries: i32,
-    pub base_delay: String,
+    pub base_delay: Duration,
     pub retry_target: String,
     pub fallback_target: String,
 }

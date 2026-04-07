@@ -124,8 +124,8 @@ fn apply_config_attrs(attrs: &mut BTreeMap<String, String>, cfg: &NodeConfig) {
             if !c.command.is_empty() {
                 attrs.insert("tool_command".to_string(), escape_newlines(&c.command));
             }
-            if !c.timeout.is_empty() {
-                attrs.insert("timeout".to_string(), c.timeout.clone());
+            if !c.timeout.is_zero() {
+                attrs.insert("timeout".to_string(), c.timeout.to_string());
             }
         }
         NodeConfig::Human(c) => {

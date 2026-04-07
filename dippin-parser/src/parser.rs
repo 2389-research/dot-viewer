@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use crate::duration::Duration;
 use crate::error::{Diagnostic, DiagnosticKind, Error, Result};
 use crate::ir::*;
 use crate::lexer::{Lexer, Token, TokenType};
@@ -389,7 +390,7 @@ impl Parser {
             "retry_target" => node.retry.retry_target = val.to_string(),
             "fallback_target" => node.retry.fallback_target = val.to_string(),
             "max_retries" => node.retry.max_retries = self.parse_int(val, key, loc),
-            "base_delay" => node.retry.base_delay = val.to_string(),
+            "base_delay" => node.retry.base_delay = self.parse_duration(val, key, loc),
             _ => return false,
         }
         true
@@ -429,7 +430,7 @@ impl Parser {
             "cache_tools" => cfg.cache_tools = val == "true",
             "max_turns" => cfg.max_turns = self.parse_int(val, key, loc),
             "compaction_threshold" => cfg.compaction_threshold = self.parse_float(val, key, loc),
-            "cmd_timeout" => cfg.cmd_timeout = val.to_string(),
+            "cmd_timeout" => cfg.cmd_timeout = self.parse_duration(val, key, loc),
             "params" => cfg.params = parse_params_block(val),
             _ => {}
         }
@@ -441,11 +442,11 @@ impl Parser {
         cfg: &mut ToolConfig,
         key: &str,
         val: &str,
-        _loc: &SourceLocation,
+        loc: &SourceLocation,
     ) {
         match key {
             "command" => cfg.command = val.to_string(),
-            "timeout" => cfg.timeout = val.to_string(),
+            "timeout" => cfg.timeout = self.parse_duration(val, key, loc),
             "outputs" => cfg.outputs = split_comma(val),
             _ => {}
         }
@@ -757,6 +758,24 @@ impl Parser {
             ));
             0
         })
+    }
+
+    /// Parse a Go-style duration string, recording a diagnostic on failure.
+    fn parse_duration(&mut self, val: &str, key: &str, loc: &SourceLocation) -> Duration {
+        match Duration::parse(val) {
+            Ok(d) => d,
+            Err(_) => {
+                self.diagnostics.push(Diagnostic::error(
+                    DiagnosticKind::InvalidDuration {
+                        value: val.to_string(),
+                        field: key.to_string(),
+                    },
+                    format!("invalid duration {:?} for {}", val, key),
+                    loc.clone(),
+                ));
+                Duration::default()
+            }
+        }
     }
 
     /// Parse a float from a string, recording a diagnostic on failure.
