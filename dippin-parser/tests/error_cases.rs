@@ -29,14 +29,12 @@ fn test_unterminated_string() {
 
 #[test]
 fn test_unknown_node_kind() {
-    // Parser surfaces an unknown top-level keyword as UnexpectedToken / Other.
+    // There is no dedicated `UnknownNodeKind` variant; an unrecognized child
+    // keyword inside the workflow body collapses to `DiagnosticKind::Other`.
+    // Tighten this test once the parser grows a more specific diagnostic.
     assert_kind(
         "workflow F\n  start: A\n  exit: A\n  wizard A\n    prompt: x\n",
-        |k| {
-            matches!(k, DiagnosticKind::Other)
-                || matches!(k, DiagnosticKind::UnexpectedToken { .. })
-                || matches!(k, DiagnosticKind::UnknownField { .. })
-        },
+        |k| matches!(k, DiagnosticKind::Other),
     );
 }
 
@@ -90,9 +88,12 @@ fn test_invalid_bool() {
 
 #[test]
 fn test_missing_workflow_identifier() {
+    // Pin `after = "workflow"` so a future regression that swallows this
+    // diagnostic and leaves only the secondary `EmptyWorkflow` will fail
+    // loudly instead of silently overlapping with `test_empty_file`.
     assert_kind(
         "workflow\n  start: A\n",
-        |k| matches!(k, DiagnosticKind::MissingIdentifier { .. }),
+        |k| matches!(k, DiagnosticKind::MissingIdentifier { after } if after == "workflow"),
     );
 }
 
@@ -100,7 +101,7 @@ fn test_missing_workflow_identifier() {
 fn test_missing_agent_identifier() {
     assert_kind(
         "workflow F\n  start: A\n  exit: A\n  agent\n    prompt: x\n    model: m\n    provider: p\n",
-        |k| matches!(k, DiagnosticKind::MissingIdentifier { .. }),
+        |k| matches!(k, DiagnosticKind::MissingIdentifier { after } if after == "agent"),
     );
 }
 
