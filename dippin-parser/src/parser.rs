@@ -457,17 +457,18 @@ impl Parser {
 
     /// Parse a parallel node (inline or block form).
     fn parse_parallel(&mut self) -> ParseStep<()> {
+        let source = self.lexer.peek_token().location.clone();
         self.lexer.next_token(); // "parallel"
         let id = self.expect_identifier("parallel")?.value;
 
         if self.lexer.peek_token().token_type == TokenType::Arrow {
-            return self.parse_parallel_inline(&id);
+            return self.parse_parallel_inline(&id, source);
         }
-        self.parse_parallel_block(&id)
+        self.parse_parallel_block(&id, source)
     }
 
     /// Parse inline form: parallel ID -> target, target
-    fn parse_parallel_inline(&mut self, id: &str) -> ParseStep<()> {
+    fn parse_parallel_inline(&mut self, id: &str, source: SourceLocation) -> ParseStep<()> {
         self.expect(TokenType::Arrow)?;
         let targets = self.parse_comma_list();
         self.workflow.nodes.push(Node {
@@ -481,14 +482,14 @@ impl Parser {
             }),
             retry: RetryConfig::default(),
             io: NodeIO::default(),
-            source: SourceLocation::default(),
+            source,
         });
         self.expect(TokenType::Newline)?;
         Ok(())
     }
 
     /// Parse block form with per-branch config.
-    fn parse_parallel_block(&mut self, id: &str) -> ParseStep<()> {
+    fn parse_parallel_block(&mut self, id: &str, source: SourceLocation) -> ParseStep<()> {
         self.expect(TokenType::Newline)?;
         self.expect(TokenType::Indent)?;
         let branches = self.parse_parallel_branches();
@@ -503,7 +504,7 @@ impl Parser {
             config: NodeConfig::Parallel(ParallelConfig { targets, branches }),
             retry: RetryConfig::default(),
             io: NodeIO::default(),
-            source: SourceLocation::default(),
+            source,
         });
         Ok(())
     }
@@ -595,6 +596,7 @@ impl Parser {
 
     /// Parse a fan_in node: fan_in ID <- source, source
     fn parse_fan_in(&mut self) -> ParseStep<()> {
+        let source = self.lexer.peek_token().location.clone();
         self.lexer.next_token(); // "fan_in"
         let id = self.expect_identifier("fan_in")?.value;
         self.expect(TokenType::BackArrow)?;
@@ -607,7 +609,7 @@ impl Parser {
             config: NodeConfig::FanIn(FanInConfig { sources }),
             retry: RetryConfig::default(),
             io: NodeIO::default(),
-            source: SourceLocation::default(),
+            source,
         });
         self.expect(TokenType::Newline)?;
         Ok(())
@@ -644,6 +646,7 @@ impl Parser {
 
     /// Parse a single edge: from -> to [attributes...]
     fn parse_single_edge(&mut self) -> ParseStep<()> {
+        let source = self.lexer.peek_token().location.clone();
         let from = self.expect_identifier("edge from")?.value;
         self.expect(TokenType::Arrow)?;
         let to = self.expect_identifier("->")?.value;
@@ -654,7 +657,7 @@ impl Parser {
             condition: None,
             weight: 0,
             restart: false,
-            source: SourceLocation::default(),
+            source,
         };
         self.parse_edge_attributes(&mut edge)?;
         self.workflow.edges.push(edge);
@@ -1194,6 +1197,14 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_edge_has_source_location() {
+        let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: x\n    model: m\n    provider: p\n  agent B\n    prompt: y\n    model: m\n    provider: p\n  edges\n    A -> B\n";
+        let wf = crate::parse(src, "t.dip").unwrap();
+        let edge = wf.edges.iter().find(|e| e.from == "A" && e.to == "B").unwrap();
+        assert_ne!(edge.source.line, 0, "edge should have a real source location");
     }
 
     #[test]
