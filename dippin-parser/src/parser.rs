@@ -1,25 +1,23 @@
 //! # Dippin parser
 //!
-//! Recursive-descent parser for the Dippin DSL. The grammar is roughly:
+//! Recursive-descent parser for the Dippin DSL. The top-level shape is:
 //!
 //! ```text
-//! file        := top_level*
-//! top_level   := workflow_decl | node_decl | edges_block | stylesheet_block
-//! workflow    := "workflow" IDENT NEWLINE INDENT workflow_field* OUTDENT
-//! workflow_field := "goal:" STRING
-//!                | "start:" IDENT
-//!                | "exit:" IDENT
-//!                | "version:" STRING
-//!                | "defaults" NEWLINE INDENT default_field* OUTDENT
-//! node_decl   := node_kind IDENT NEWLINE INDENT node_field* OUTDENT
-//! node_kind   := "agent" | "human" | "tool" | "parallel" | "fan_in" | "subgraph"
-//! edges_block := "edges" NEWLINE INDENT edge_decl* OUTDENT
-//! edge_decl   := IDENT "->" IDENT edge_attr*
-//! edge_attr   := "when" CONDITION | "weight:" INT | "label:" STRING | "restart"
+//! file     := workflow_decl
+//! workflow := "workflow" IDENT NEWLINE INDENT workflow_body OUTDENT
 //! ```
 //!
-//! Indentation is significant; tabs and spaces must not be mixed within a file.
-//! See the canonical Go implementation for reference.
+//! Everything else — `goal`/`start`/`exit`/`version`/`defaults`, node
+//! declarations (`agent`/`human`/`tool`/`parallel`/`fan_in`/`subgraph`),
+//! the inline parallel/fan_in forms, the `edges` block (with `when`,
+//! `weight:`, `label:`, `restart: true`), the `stylesheet` block, and all
+//! per-node body fields — is parsed inside the workflow body. This module
+//! comment is intentionally a sketch only; consult `dispatch_workflow_field`
+//! and `parse_node_body` for the authoritative productions, and the
+//! fixtures under `testdata/` for worked examples.
+//!
+//! Indentation is significant; tabs and spaces must not be mixed within a
+//! file. See the canonical Go implementation for reference.
 
 // ABOUTME: Recursive descent parser for the Dippin workflow language.
 // ABOUTME: Consumes tokens from the lexer and produces an IR Workflow structure.

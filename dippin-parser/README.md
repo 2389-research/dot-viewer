@@ -12,14 +12,17 @@ Pre-1.0. Public types are `#[non_exhaustive]` to allow additive evolution.
 ```rust
 use dippin_parser::{parse, parse_to_dot_with_options, ExportOptions, RankDir};
 
-let src = std::fs::read_to_string("workflow.dip")?;
-let wf = parse(&src, "workflow.dip")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let src = std::fs::read_to_string("workflow.dip")?;
+    let _wf = parse(&src, "workflow.dip")?;
 
-let mut opts = ExportOptions::default();
-opts.include_prompts = true;
-opts.rank_dir = RankDir::LeftRight;
-let dot = parse_to_dot_with_options(&src, "workflow.dip", &opts)?;
-println!("{dot}");
+    let mut opts = ExportOptions::default();
+    opts.include_prompts = true;
+    opts.rank_dir = RankDir::LeftRight;
+    let dot = parse_to_dot_with_options(&src, "workflow.dip", &opts)?;
+    println!("{dot}");
+    Ok(())
+}
 ```
 
 ## Features

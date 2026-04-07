@@ -4,7 +4,8 @@
 //! `indent_stack` holds the stack of currently-active indent columns; the bottom
 //! sentinel is `0`. On each line:
 //!
-//! 1. Compute the leading whitespace count (spaces only — see `check_indent_consistency`).
+//! 1. Count the leading whitespace bytes (spaces or tabs — each counts as one
+//!    unit; mixing the two within a file is diagnosed by `check_indent_consistency`).
 //! 2. If `indent > top`, push `indent` and emit `INDENT`.
 //! 3. While `indent < top`, pop and emit `OUTDENT`.
 //! 4. If after popping `indent != top`, emit an `InvalidIndentation` diagnostic.
