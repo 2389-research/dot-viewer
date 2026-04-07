@@ -15,6 +15,7 @@ use crate::grid::{map_to_grid, NodeContent};
 use crate::plain::parse_plain;
 use crate::render::{render_ascii, RenderOptions};
 
+const EX_USAGE: i32 = 64;
 const EX_DATAERR: i32 = 65;
 const EX_NOINPUT: i32 = 66;
 
@@ -110,24 +111,48 @@ fn resolve_dot_source(file: &std::path::Path, raw_source: &str, format: Format) 
 fn main() {
     let cli = Cli::parse();
 
-    // Reject pathologically large inputs up front so the parser never sees
-    // them. The limit matches dippin_parser::MAX_INPUT_SIZE.
-    let metadata = std::fs::metadata(&cli.file).unwrap_or_else(|e| {
-        eprintln!("error: cannot stat {}: {}", cli.file.display(), e);
-        std::process::exit(EX_NOINPUT);
-    });
-    if metadata.len() as usize > dippin_parser::MAX_INPUT_SIZE {
-        eprintln!(
-            "error: file exceeds maximum size of {} bytes",
-            dippin_parser::MAX_INPUT_SIZE
-        );
-        std::process::exit(EX_DATAERR);
-    }
+    let from_stdin = cli.file.as_os_str() == "-";
 
-    let raw_source = std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
-        eprintln!("Error reading {}: {}", cli.file.display(), e);
-        std::process::exit(EX_NOINPUT);
-    });
+    let raw_source = if from_stdin {
+        // Stdin doesn't have an extension to auto-detect from, so the user
+        // must tell us what they're piping in.
+        if matches!(cli.format, Format::Auto) {
+            eprintln!("error: --format is required when reading from stdin");
+            std::process::exit(EX_USAGE);
+        }
+        let mut buf = String::new();
+        if let Err(e) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut buf) {
+            eprintln!("error: cannot read stdin: {}", e);
+            std::process::exit(EX_NOINPUT);
+        }
+        if buf.len() > dippin_parser::MAX_INPUT_SIZE {
+            eprintln!(
+                "error: input exceeds maximum size of {} bytes",
+                dippin_parser::MAX_INPUT_SIZE
+            );
+            std::process::exit(EX_DATAERR);
+        }
+        buf
+    } else {
+        // Reject pathologically large inputs up front so the parser never sees
+        // them. The limit matches dippin_parser::MAX_INPUT_SIZE.
+        let metadata = std::fs::metadata(&cli.file).unwrap_or_else(|e| {
+            eprintln!("error: cannot stat {}: {}", cli.file.display(), e);
+            std::process::exit(EX_NOINPUT);
+        });
+        if metadata.len() as usize > dippin_parser::MAX_INPUT_SIZE {
+            eprintln!(
+                "error: file exceeds maximum size of {} bytes",
+                dippin_parser::MAX_INPUT_SIZE
+            );
+            std::process::exit(EX_DATAERR);
+        }
+
+        std::fs::read_to_string(&cli.file).unwrap_or_else(|e| {
+            eprintln!("Error reading {}: {}", cli.file.display(), e);
+            std::process::exit(EX_NOINPUT);
+        })
+    };
 
     let source = resolve_dot_source(&cli.file, &raw_source, cli.format);
 
