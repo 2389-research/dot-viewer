@@ -749,7 +749,7 @@ impl Parser {
             let attr = self.lexer.next_token();
             match attr.value.as_str() {
                 "when" => {
-                    let raw = self.read_condition_raw();
+                    let raw = self.read_condition_raw(&attr);
                     edge.condition = Some(Condition { raw });
                 }
                 "label" => {
@@ -789,26 +789,38 @@ impl Parser {
         Ok(())
     }
 
-    /// Read tokens for a condition expression until newline/EOF or a known edge keyword.
-    fn read_condition_raw(&mut self) -> String {
+    /// Read a condition expression, preserving the original source spacing.
+    ///
+    /// Rather than joining individual tokens with spaces (which loses the
+    /// author's formatting), we consume tokens from the condition region to
+    /// advance the lexer cursor and then slice the original source line
+    /// between the `when` keyword and the first downstream edge attribute
+    /// (`label`/`weight`/`restart`) or end-of-line.
+    fn read_condition_raw(&mut self, when_token: &crate::lexer::Token) -> String {
         let edge_attr_keywords = ["label", "weight", "restart"];
-        let mut parts = Vec::new();
+        let when_line = when_token.location.line;
+        // Column where the raw condition text begins: just past `when`.
+        let start_col = when_token.location.column + "when".len();
+        // Walk tokens on the same line to find where the condition ends.
+        let mut end_col: Option<usize> = None;
         loop {
             let pk = self.lexer.peek_token();
             if pk.token_type == TokenType::Newline || pk.token_type == TokenType::Eof {
                 break;
             }
-            if edge_attr_keywords.contains(&pk.value.as_str()) {
+            if pk.location.line != when_line {
                 break;
             }
-            let t = self.lexer.next_token();
-            if t.token_type == TokenType::Literal {
-                parts.push(format!("\"{}\"", t.value));
-            } else {
-                parts.push(t.value);
+            if edge_attr_keywords.contains(&pk.value.as_str()) {
+                end_col = Some(pk.location.column);
+                break;
             }
+            self.lexer.next_token();
         }
-        parts.join(" ").trim().to_string()
+        match end_col {
+            Some(col) => self.lexer.raw_line_tail_range(when_line, start_col, col),
+            None => self.lexer.raw_line_tail(when_line, start_col),
+        }
     }
 
     // ── Stylesheet ────────────────────────────────────────
@@ -1106,6 +1118,14 @@ mod tests {
         assert!(edge.condition.is_some());
         assert_eq!(edge.condition.as_ref().unwrap().raw, "ctx.outcome = success");
         assert_eq!(edge.label, "pass");
+    }
+
+    #[test]
+    fn test_condition_preserves_original_spacing() {
+        let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: x\n    model: m\n    provider: p\n  agent B\n    prompt: y\n    model: m\n    provider: p\n  edges\n    A -> B when ctx.x==success\n";
+        let wf = crate::parse(src, "t.dip").unwrap();
+        let edge = &wf.edges[0];
+        assert_eq!(edge.condition.as_ref().unwrap().raw, "ctx.x==success");
     }
 
     #[test]

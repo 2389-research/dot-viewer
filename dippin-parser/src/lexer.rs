@@ -106,6 +106,49 @@ impl Lexer {
         self.tokens[self.token_idx].clone()
     }
 
+    /// Return the substring of a source line starting from a 1-based character
+    /// column, with any trailing comment and surrounding whitespace stripped.
+    /// Used to recover the original raw text of an edge condition after the
+    /// `when` keyword without round-tripping through token joining.
+    pub fn raw_line_tail(&self, line_num: usize, col: usize) -> String {
+        if line_num < 1 || line_num > self.lines.len() || col < 1 {
+            return String::new();
+        }
+        let line = &self.lines[line_num - 1];
+        let trimmed = strip_comment(line.trim_end());
+        // Convert char column to byte offset for the (possibly multi-byte) line.
+        let byte_off = trimmed
+            .char_indices()
+            .nth(col - 1)
+            .map(|(b, _)| b)
+            .unwrap_or(trimmed.len());
+        trimmed[byte_off..].trim().to_string()
+    }
+
+    /// Return a substring of a source line between two 1-based character
+    /// columns (`start_col` inclusive, `end_col` exclusive), trimmed.
+    pub fn raw_line_tail_range(&self, line_num: usize, start_col: usize, end_col: usize) -> String {
+        if line_num < 1 || line_num > self.lines.len() || start_col < 1 || end_col <= start_col {
+            return String::new();
+        }
+        let line = &self.lines[line_num - 1];
+        let trimmed = strip_comment(line.trim_end());
+        let start_byte = trimmed
+            .char_indices()
+            .nth(start_col - 1)
+            .map(|(b, _)| b)
+            .unwrap_or(trimmed.len());
+        let end_byte = trimmed
+            .char_indices()
+            .nth(end_col - 1)
+            .map(|(b, _)| b)
+            .unwrap_or(trimmed.len());
+        if end_byte <= start_byte {
+            return String::new();
+        }
+        trimmed[start_byte..end_byte].trim().to_string()
+    }
+
     /// Extract the raw value text from a line, starting after the colon.
     /// Used for single-line values like "fidelity: summary:medium".
     pub fn raw_value_text(&self, line_num: usize) -> String {
