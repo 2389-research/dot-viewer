@@ -127,7 +127,7 @@ fn apply_config_attrs(attrs: &mut BTreeMap<String, String>, cfg: &NodeConfig) {
     match cfg {
         NodeConfig::Agent(c) => {
             if !c.prompt.is_empty() {
-                attrs.insert("prompt".to_string(), escape_newlines(&c.prompt));
+                attrs.insert("prompt".to_string(), c.prompt.clone());
             }
             if !c.model.is_empty() {
                 attrs.insert("model".to_string(), c.model.clone());
@@ -138,7 +138,7 @@ fn apply_config_attrs(attrs: &mut BTreeMap<String, String>, cfg: &NodeConfig) {
         }
         NodeConfig::Tool(c) => {
             if !c.command.is_empty() {
-                attrs.insert("tool_command".to_string(), escape_newlines(&c.command));
+                attrs.insert("tool_command".to_string(), c.command.clone());
             }
             if !c.timeout.is_zero() {
                 attrs.insert("timeout".to_string(), c.timeout.to_string());
@@ -260,11 +260,6 @@ fn dot_quote(s: &str) -> String {
     out
 }
 
-/// Replace literal newlines with the DOT \n escape.
-fn escape_newlines(s: &str) -> String {
-    s.replace('\n', "\\n")
-}
-
 /// Strip the ctx. prefix from condition variables for DOT output.
 fn lower_condition_namespaces(cond: &str) -> String {
     cond.replace("ctx.", "")
@@ -302,11 +297,6 @@ mod tests {
         assert_eq!(dot_quote(r#"a"b"#), r#""a\"b""#);
         // Real newline must be escaped
         assert_eq!(dot_quote("line1\nline2"), r#""line1\nline2""#);
-    }
-
-    #[test]
-    fn test_escape_newlines() {
-        assert_eq!(escape_newlines("line1\nline2"), "line1\\nline2");
     }
 
     #[test]
@@ -442,6 +432,80 @@ mod tests {
         assert!(dot.contains("[1]"), "expected [1] in: {}", dot);
         assert!(dot.contains("[2]"), "expected [2] in: {}", dot);
         assert!(dot.contains("fillcolor"));
+    }
+
+    #[test]
+    fn test_export_escapes_user_values() {
+        // Every user-provided value context must route through dot_quote,
+        // which escapes backslash, double-quote, and newline.
+        let wf = Workflow {
+            name: "Esc".to_string(),
+            start: "A".to_string(),
+            exit: "B".to_string(),
+            nodes: vec![
+                Node {
+                    id: "A".to_string(),
+                    kind: NodeKind::Agent,
+                    label: "lbl\"with\\slash".to_string(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Agent(AgentConfig {
+                        prompt: "line1\nline2\\x".to_string(),
+                        model: "m\"q".to_string(),
+                        provider: "p\\v".to_string(),
+                        ..Default::default()
+                    }),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+                Node {
+                    id: "B".to_string(),
+                    kind: NodeKind::Tool,
+                    label: String::new(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Tool(ToolConfig {
+                        command: "echo \"hi\"\nbye".to_string(),
+                        ..Default::default()
+                    }),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+            ],
+            edges: Vec::new(),
+            ..Default::default()
+        };
+        let opts = ExportOptions {
+            include_prompts: true,
+            ..Default::default()
+        };
+        let dot = export_dot(&wf, &opts);
+        // label: quotes escaped and backslash doubled
+        assert!(
+            dot.contains(r#"label="lbl\"with\\slash""#),
+            "label not escaped: {}",
+            dot
+        );
+        // prompt: newline -> \n, backslash doubled
+        assert!(
+            dot.contains(r#"prompt="line1\nline2\\x""#),
+            "prompt not escaped: {}",
+            dot
+        );
+        // model: quote escaped
+        assert!(dot.contains(r#"model="m\"q""#), "model not escaped: {}", dot);
+        // provider: backslash doubled
+        assert!(
+            dot.contains(r#"provider="p\\v""#),
+            "provider not escaped: {}",
+            dot
+        );
+        // tool_command: newline and quotes escaped
+        assert!(
+            dot.contains(r#"tool_command="echo \"hi\"\nbye""#),
+            "tool_command not escaped: {}",
+            dot
+        );
     }
 
     #[test]
