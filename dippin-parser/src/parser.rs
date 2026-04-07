@@ -293,7 +293,9 @@ impl Parser {
             "on_resume" => self.workflow.defaults.on_resume = val.to_string(),
             "max_retries" => self.workflow.defaults.max_retries = self.parse_u32(val, key, loc),
             "max_restarts" => self.workflow.defaults.max_restarts = self.parse_u32(val, key, loc),
-            "cache_tools" => self.workflow.defaults.cache_tools = val == "true",
+            "cache_tools" => {
+                self.workflow.defaults.cache_tools = self.parse_bool(val, key, loc)
+            }
             _ => {
                 self.diagnostics.push(Diagnostic::error(
                     DiagnosticKind::UnknownField {
@@ -426,9 +428,9 @@ impl Parser {
             "response_format" => cfg.response_format = val.to_string(),
             "response_schema" => cfg.response_schema = val.to_string(),
             "compaction" => cfg.compaction = val.to_string(),
-            "goal_gate" => cfg.goal_gate = val == "true",
-            "auto_status" => cfg.auto_status = val == "true",
-            "cache_tools" => cfg.cache_tools = val == "true",
+            "goal_gate" => cfg.goal_gate = self.parse_bool(val, key, loc),
+            "auto_status" => cfg.auto_status = self.parse_bool(val, key, loc),
+            "cache_tools" => cfg.cache_tools = self.parse_bool(val, key, loc),
             "max_turns" => cfg.max_turns = self.parse_u32(val, key, loc),
             "compaction_threshold" => cfg.compaction_threshold = self.parse_float(val, key, loc),
             "cmd_timeout" => cfg.cmd_timeout = self.parse_duration(val, key, loc),
@@ -723,7 +725,9 @@ impl Parser {
                 }
                 "restart" => {
                     self.expect(TokenType::Colon)?;
-                    edge.restart = self.lexer.next_token().value == "true";
+                    let v = self.lexer.next_token();
+                    let v_loc = v.location.clone();
+                    edge.restart = self.parse_bool(&v.value, "restart", &v_loc);
                 }
                 _ => {
                     // Go parity: dippin-lang silently ignores unknown edge
@@ -781,6 +785,25 @@ impl Parser {
     }
 
     // ── Helpers ───────────────────────────────────────────
+
+    /// Parse a strict boolean value, recording a diagnostic if not "true"/"false".
+    fn parse_bool(&mut self, value: &str, field: &str, loc: &SourceLocation) -> bool {
+        match value {
+            "true" => true,
+            "false" => false,
+            _ => {
+                self.diagnostics.push(Diagnostic::error(
+                    DiagnosticKind::InvalidBool {
+                        value: value.to_string(),
+                        field: field.to_string(),
+                    },
+                    format!("`{}` requires true or false, got `{}`", field, value),
+                    loc.clone(),
+                ));
+                false
+            }
+        }
+    }
 
     /// Record an unknown-field diagnostic at the given location.
     fn unknown_field(&mut self, scope: &str, name: &str, loc: &SourceLocation) {
@@ -1221,6 +1244,16 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_invalid_bool_diagnoses() {
+        let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    goal_gate: yes\n    model: m\n    provider: p\n";
+        let err = crate::parse(src, "t.dip").unwrap_err();
+        assert!(err
+            .diagnostics()
+            .iter()
+            .any(|d| matches!(d.kind, crate::DiagnosticKind::InvalidBool { .. })));
     }
 
     #[test]
