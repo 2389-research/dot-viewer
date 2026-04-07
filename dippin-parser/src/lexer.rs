@@ -4,6 +4,9 @@
 use crate::error::{Diagnostic, DiagnosticKind};
 use crate::ir::SourceLocation;
 
+/// Maximum allowed indentation nesting depth.
+const MAX_INDENT_DEPTH: usize = 64;
+
 /// Token types produced by the lexer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenType {
@@ -205,6 +208,25 @@ impl Lexer {
     fn emit_indent_tokens(&mut self, indent: usize) {
         let curr_indent = *self.indent_stack.last().unwrap();
         if indent > curr_indent {
+            // Guard against adversarially deep nesting: cap the stack at
+            // MAX_INDENT_DEPTH levels and emit a single diagnostic the first
+            // time we refuse a push. We stay at the current level rather
+            // than panicking or unwinding.
+            if self.indent_stack.len() >= MAX_INDENT_DEPTH {
+                self.diagnostics.push(Diagnostic::error(
+                    DiagnosticKind::InvalidIndentation(format!(
+                        "maximum indent depth ({}) exceeded",
+                        MAX_INDENT_DEPTH
+                    )),
+                    format!("maximum indent depth ({}) exceeded", MAX_INDENT_DEPTH),
+                    SourceLocation {
+                        file: self.filename.clone(),
+                        line: self.line,
+                        column: 1,
+                    },
+                ));
+                return;
+            }
             self.indent_stack.push(indent);
             self.tokens.push(Token {
                 token_type: TokenType::Indent,
@@ -978,6 +1000,19 @@ mod tests {
         let result = find_unquoted_hash(src);
         let expected = src.find("# comment").unwrap();
         assert_eq!(result, Some(expected));
+    }
+
+    #[test]
+    fn test_indent_depth_capped() {
+        // Build a pathologically deep indentation ladder. The lexer must not
+        // panic or blow the stack; it should emit a diagnostic and the parse
+        // should fail cleanly.
+        let mut src = String::new();
+        for i in 0..100 {
+            src.push_str(&" ".repeat(i));
+            src.push_str("a:\n");
+        }
+        let _err = crate::parse(&src, "deep.dip").unwrap_err();
     }
 
     #[test]
