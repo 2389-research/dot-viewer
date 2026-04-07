@@ -9,7 +9,7 @@ use thiserror::Error;
 /// Result alias used throughout the crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Top-level error returned from `parse` and `convert_to_dot`.
+/// Top-level error returned from `parse` and `parse_to_dot`.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum Error {
