@@ -1,0 +1,27 @@
+workflow HumanInterview
+  goal: "Test interview mode parsing"
+  start: Agent
+  exit: Done
+
+  agent Agent
+    writes: interview_questions
+    prompt: Ask questions.
+
+  human Gate
+    label: "Answer the questions"
+    mode: interview
+    questions_key: interview_questions
+    answers_key: interview_answers
+    reads: interview_questions
+    writes: interview_answers, human_response
+    prompt:
+      If no questions were detected, describe your
+      requirements here instead.
+
+  agent Done
+    reads: interview_answers
+    prompt: Proceed.
+
+  edges
+    Agent -> Gate
+    Gate -> Done

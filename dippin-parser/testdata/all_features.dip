@@ -1,0 +1,66 @@
+workflow all_features
+  goal: "Exercise all v1.5 features"
+  start: Ask
+  exit: Done
+
+  defaults
+    model: claude-opus-4-6
+    provider: anthropic
+    fidelity: full
+    on_resume: degrade
+    compaction: sliding_window
+
+  agent Ask
+    class: input
+    prompt: "Ask the user what to do."
+
+  subgraph Review
+    ref: ./review.dip
+    params:
+      language: python
+      strict: true
+
+  agent Coder
+    class: coder
+    compaction: sliding_window
+    compaction_threshold: 0.8
+    cache_tools: true
+    prompt:
+      Implement the plan.
+      Use best practices.
+
+  parallel split
+    branch: worker_a
+      model: o1
+    branch: worker_b
+      model: claude-3
+
+  agent worker_a
+    class: coder
+    prompt: "Worker A."
+
+  agent worker_b
+    class: coder
+    prompt: "Worker B."
+
+  fan_in join <- worker_a, worker_b
+
+  agent Done
+    prompt: "Finished."
+
+  stylesheet:
+    *
+      temperature: 0.7
+    agent
+      fidelity: full
+    .coder
+      model: o1
+      reasoning_effort: medium
+    #Done
+      max_retries: 5
+
+  edges
+    Ask -> Review
+    Review -> Coder
+    Coder -> split
+    join -> Done

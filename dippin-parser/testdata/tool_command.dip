@@ -1,0 +1,18 @@
+workflow tool_test
+  goal: "Test tool commands"
+  start: Run
+  exit: Done
+
+  tool Run
+    timeout: 30s
+    command:
+      #!/bin/sh
+      set -eu
+      echo "running tests"
+      go test ./... 2>&1
+
+  agent Done
+    prompt: "Finished."
+
+  edges
+    Run -> Done

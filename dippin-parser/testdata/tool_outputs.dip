@@ -1,0 +1,18 @@
+workflow tool_outputs_test
+  goal: "Test tool outputs field"
+  start: Check
+  exit: Done
+
+  tool Check
+    outputs: complete, continue, error
+    timeout: 30s
+    command:
+      #!/bin/sh
+      set -eu
+      echo "complete"
+
+  agent Done
+    prompt: "Finished."
+
+  edges
+    Check -> Done

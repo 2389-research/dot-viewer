@@ -1,0 +1,25 @@
+workflow HumanNode
+  goal: "Test human node fields"
+  start: H
+  exit: A
+
+  human H
+    mode: choice
+    default: approve
+
+  agent A
+    prompt: "Continue."
+    system_prompt: "You are helpful."
+    model: claude-sonnet-4-6
+    provider: anthropic
+    goal_gate: true
+    auto_status: true
+    reasoning_effort: high
+    reads: context_data, user_input
+    writes: result, summary
+    label: Main Agent
+    class: coder, reviewer
+    max_turns: 10
+
+  edges
+    H -> A

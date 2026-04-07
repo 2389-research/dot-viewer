@@ -1,0 +1,20 @@
+workflow subgraph_test
+  goal: "Test subgraph params"
+  start: Build
+  exit: Done
+
+  agent Build
+    prompt: "Build the feature."
+
+  subgraph Review
+    ref: ./review.dip
+    params:
+      language: python
+      strict: true
+
+  agent Done
+    prompt: "Done."
+
+  edges
+    Build -> Review
+    Review -> Done

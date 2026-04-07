@@ -1,0 +1,18 @@
+workflow edge_test
+  goal: "Test edge conditions"
+  start: A
+  exit: C
+
+  agent A
+    prompt: "Step A."
+
+  agent B
+    prompt: "Step B."
+
+  agent C
+    prompt: "Step C."
+
+  edges
+    A -> B when ctx.outcome == "success"
+    A -> C when ctx.outcome != "success"
+    B -> C

@@ -1,0 +1,22 @@
+workflow HumanPrompt
+  goal: "Test human node with multiline prompt"
+  start: Gate
+  exit: Done
+
+  human Gate
+    mode: choice
+    default: approve
+    prompt:
+      Please review the proposed changes below.
+
+      If everything looks correct, approve to continue.
+      Otherwise, reject and provide feedback.
+
+      ## Changes
+      ${ctx.diff_summary}
+
+  agent Done
+    prompt: "Ship it."
+
+  edges
+    Gate -> Done

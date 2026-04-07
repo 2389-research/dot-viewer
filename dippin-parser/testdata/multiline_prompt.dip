@@ -1,0 +1,17 @@
+workflow multiline
+  goal: "Test multiline prompts"
+  start: A
+  exit: A
+
+  agent A
+    prompt:
+      You are a senior software architect.
+
+      Read the user's request below and produce a clear,
+      actionable implementation plan.
+
+      ## User Request
+      ${ctx.human_response}
+
+  edges
+    A -> A
