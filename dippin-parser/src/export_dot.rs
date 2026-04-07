@@ -6,14 +6,37 @@ use std::fmt::Write;
 
 use crate::ir::*;
 
+/// Layout direction passed to Graphviz as `rankdir`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum RankDir {
+    #[default]
+    TopBottom,
+    LeftRight,
+    BottomTop,
+    RightLeft,
+}
+
+impl RankDir {
+    /// Return the DOT `rankdir` attribute value for this direction.
+    pub fn as_dot(&self) -> &'static str {
+        match self {
+            RankDir::TopBottom => "TB",
+            RankDir::LeftRight => "LR",
+            RankDir::BottomTop => "BT",
+            RankDir::RightLeft => "RL",
+        }
+    }
+}
+
 /// Options controlling the DOT output format.
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct ExportOptions {
     /// Include full prompt/command text as node attributes.
     pub include_prompts: bool,
-    /// Graph layout direction: "LR" or "TB". Defaults to "TB".
-    pub rank_dir: String,
+    /// Graph layout direction. Defaults to top-to-bottom.
+    pub rank_dir: RankDir,
     /// Apply a distinct fill color to nodes with GoalGate: true.
     pub highlight_goal_gates: bool,
     /// Ordered list of node IDs to highlight as an execution path.
@@ -49,11 +72,7 @@ pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
 
 /// Write the digraph opening and global attributes.
 fn write_dot_header(b: &mut String, w: &Workflow, opts: &ExportOptions) {
-    let rank_dir = if opts.rank_dir.is_empty() {
-        "TB"
-    } else {
-        &opts.rank_dir
-    };
+    let rank_dir = opts.rank_dir.as_dot();
     let graph_name = if w.name.is_empty() {
         "workflow"
     } else {

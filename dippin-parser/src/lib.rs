@@ -11,7 +11,7 @@ pub mod validate;
 
 pub use duration::Duration;
 pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
-pub use export_dot::ExportOptions;
+pub use export_dot::{ExportOptions, RankDir};
 pub use ir::{
     AgentConfig, BranchConfig, Condition, Edge, FanInConfig, HumanConfig, Node, NodeConfig,
     NodeIO, NodeKind, ParallelConfig, RetryConfig, SourceLocation, StyleSelector, StylesheetRule,
