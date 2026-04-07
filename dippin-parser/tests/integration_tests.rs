@@ -516,6 +516,43 @@ fn test_edge_weight_and_label() {
 }
 
 #[test]
+fn test_all_workflow_defaults_fields() {
+    // ABOUTME: Exercises every field on WorkflowDefaults in a single inline
+    // workflow and asserts each value survives the parse step.
+    let src = r#"workflow D
+  start: A
+  exit: A
+
+  defaults
+    model: claude-sonnet-4-6
+    provider: anthropic
+    retry_policy: exponential
+    max_retries: 4
+    fidelity: summary:high
+    max_restarts: 2
+    restart_target: A
+    cache_tools: true
+    compaction: trim
+    on_resume: resume
+
+  agent A
+    prompt: hello
+"#;
+    let wf = parse(src, "d.dip").expect("inline defaults fixture should parse");
+    let d = &wf.defaults;
+    assert_eq!(d.model, "claude-sonnet-4-6");
+    assert_eq!(d.provider, "anthropic");
+    assert_eq!(d.retry_policy, "exponential");
+    assert_eq!(d.max_retries, 4);
+    assert_eq!(d.fidelity, "summary:high");
+    assert_eq!(d.max_restarts, 2);
+    assert_eq!(d.restart_target, "A");
+    assert!(d.cache_tools, "cache_tools should be true");
+    assert_eq!(d.compaction, "trim");
+    assert_eq!(d.on_resume, "resume");
+}
+
+#[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
     let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");
