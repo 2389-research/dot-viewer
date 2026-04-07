@@ -8,7 +8,7 @@ use indexmap::IndexMap;
 use crate::duration::Duration;
 
 /// Workflow is the top-level IR structure representing a complete pipeline.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Workflow {
     pub name: String,
@@ -24,7 +24,7 @@ pub struct Workflow {
 
 /// WorkflowDefaults holds graph-level configuration that applies to all nodes
 /// unless overridden at the node level.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WorkflowDefaults {
     pub model: String,
@@ -40,7 +40,7 @@ pub struct WorkflowDefaults {
 }
 
 /// Node represents a single step in the workflow.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct Node {
     pub id: String,
@@ -54,7 +54,7 @@ pub struct Node {
 }
 
 /// NodeKind enumerates node types explicitly.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum NodeKind {
     Agent,
@@ -63,6 +63,19 @@ pub enum NodeKind {
     Parallel,
     FanIn,
     Subgraph,
+}
+
+impl std::fmt::Display for NodeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            NodeKind::Agent => "agent",
+            NodeKind::Human => "human",
+            NodeKind::Tool => "tool",
+            NodeKind::Parallel => "parallel",
+            NodeKind::FanIn => "fan_in",
+            NodeKind::Subgraph => "subgraph",
+        })
+    }
 }
 
 impl FromStr for NodeKind {
@@ -82,7 +95,7 @@ impl FromStr for NodeKind {
 }
 
 /// NodeConfig holds kind-specific configuration for a node.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum NodeConfig {
     Agent(AgentConfig),
@@ -94,7 +107,7 @@ pub enum NodeConfig {
 }
 
 /// AgentConfig holds configuration for LLM agent nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct AgentConfig {
     pub prompt: String,
@@ -116,7 +129,7 @@ pub struct AgentConfig {
 }
 
 /// HumanConfig holds configuration for human gate nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct HumanConfig {
     pub mode: String,
@@ -127,7 +140,7 @@ pub struct HumanConfig {
 }
 
 /// ToolConfig holds configuration for shell command nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ToolConfig {
     pub command: String,
@@ -136,7 +149,7 @@ pub struct ToolConfig {
 }
 
 /// ParallelConfig holds configuration for fan-out nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ParallelConfig {
     pub targets: Vec<String>,
@@ -144,7 +157,7 @@ pub struct ParallelConfig {
 }
 
 /// BranchConfig holds per-branch configuration for block-form parallel nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct BranchConfig {
     pub target: String,
@@ -154,14 +167,14 @@ pub struct BranchConfig {
 }
 
 /// FanInConfig holds configuration for join nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FanInConfig {
     pub sources: Vec<String>,
 }
 
 /// SubgraphConfig holds configuration for embedded sub-pipeline nodes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SubgraphConfig {
     pub ref_path: String,
@@ -169,7 +182,7 @@ pub struct SubgraphConfig {
 }
 
 /// RetryConfig specifies retry behavior for a node.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RetryConfig {
     pub policy: String,
@@ -180,7 +193,7 @@ pub struct RetryConfig {
 }
 
 /// NodeIO declares what context keys a node reads and writes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct NodeIO {
     pub reads: Vec<String>,
@@ -197,7 +210,7 @@ pub struct SourceLocation {
 }
 
 /// Edge represents a connection between nodes in the workflow graph.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Edge {
     pub from: String,
@@ -210,14 +223,14 @@ pub struct Edge {
 }
 
 /// Condition is a raw boolean expression attached to an edge.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Condition {
     pub raw: String,
 }
 
 /// StylesheetRule pairs a selector with a set of properties.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct StylesheetRule {
     pub selector: StyleSelector,
@@ -261,6 +274,22 @@ mod tests {
         assert_eq!("fan_in".parse::<NodeKind>(), Ok(NodeKind::FanIn));
         assert_eq!("subgraph".parse::<NodeKind>(), Ok(NodeKind::Subgraph));
         assert!("unknown".parse::<NodeKind>().is_err());
+    }
+
+    #[test]
+    fn test_node_kind_display_fromstr_roundtrip() {
+        use std::str::FromStr;
+        for k in &[
+            NodeKind::Agent,
+            NodeKind::Human,
+            NodeKind::Tool,
+            NodeKind::Parallel,
+            NodeKind::FanIn,
+            NodeKind::Subgraph,
+        ] {
+            let s = k.to_string();
+            assert_eq!(NodeKind::from_str(&s).unwrap(), *k);
+        }
     }
 
     #[test]
