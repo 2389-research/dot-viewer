@@ -36,6 +36,17 @@ impl Parser {
         // Drain any diagnostics emitted by the lexer
         let lex_diags = std::mem::take(&mut self.lexer.diagnostics);
         self.diagnostics.extend(lex_diags);
+        if self.workflow.name.is_empty() && self.workflow.nodes.is_empty() {
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::EmptyWorkflow,
+                "no workflow declared",
+                SourceLocation {
+                    file: self.filename.clone(),
+                    line: 1,
+                    column: 1,
+                },
+            ));
+        }
         if !self.diagnostics.is_empty() {
             return Err(Error::Parse {
                 file: self.filename.clone(),
@@ -1255,6 +1266,15 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_empty_file_diagnoses() {
+        let err = crate::parse("", "empty.dip").unwrap_err();
+        assert!(err
+            .diagnostics()
+            .iter()
+            .any(|d| matches!(d.kind, crate::DiagnosticKind::EmptyWorkflow)));
     }
 
     #[test]
