@@ -10,6 +10,10 @@ use thiserror::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Top-level error returned from `parse` and `parse_to_dot`.
+///
+/// NOTE: When adding a new variant, also update the manual `Serialize` /
+/// `Deserialize` impls below — they are not derived because of the `Arc<str>`
+/// field.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum Error {
