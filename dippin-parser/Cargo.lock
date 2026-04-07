@@ -6,11 +6,16 @@ version = 4
 name = "dippin-parser"
 version = "0.1.0"
 dependencies = [
+ "dot-parser",
  "indexmap",
  "serde",
  "serde_json",
  "thiserror",
 ]
+
+[[package]]
+name = "dot-parser"
+version = "0.1.0"
 
 [[package]]
 name = "equivalent"

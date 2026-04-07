@@ -428,6 +428,35 @@ fn test_ask_and_execute_golden_snapshot() {
 }
 
 #[test]
+fn test_dot_output_is_parseable_by_dot_parser() {
+    // ABOUTME: Round-trip sanity check — DOT output from parse_to_dot must be
+    // syntactically parseable by the shared dot-parser crate.
+    for fixture in [
+        "valid_minimal.dip",
+        "multi_provider.dip",
+        "ask_and_execute.dip",
+    ] {
+        let src = read_testdata(fixture);
+        let dot = parse_to_dot(&src, fixture)
+            .unwrap_or_else(|e| panic!("parse_to_dot({}) failed: {:?}", fixture, e));
+        // Note: dot_parser::parse_dot is infallible — it returns DotGraph
+        // directly, not a Result. There is no .nodes() helper, so we count
+        // NodeDefinition statements on the statements vec.
+        let g = dot_parser::parse_dot(&dot);
+        let node_count = g
+            .statements
+            .iter()
+            .filter(|s| matches!(s, dot_parser::DotStatement::NodeDefinition { .. }))
+            .count();
+        assert!(
+            node_count > 0,
+            "round-tripped {} has no nodes",
+            fixture
+        );
+    }
+}
+
+#[test]
 fn test_edge_condition_lowering() {
     let source = read_testdata("ask_and_execute.dip");
     let dot = parse_to_dot(&source, "ask_and_execute.dip").expect("should convert");
