@@ -102,7 +102,7 @@ impl Parser {
     /// Route a workflow-level identifier to the right handler.
     fn dispatch_workflow_field(&mut self, t: &Token) -> ParseStep<()> {
         match t.value.as_str() {
-            "goal" | "start" | "exit" => self.parse_workflow_string_field(t),
+            "goal" | "start" | "exit" | "version" => self.parse_workflow_string_field(t),
             "defaults" => self.parse_defaults(),
             "edges" => self.parse_edges(),
             "stylesheet" => self.parse_stylesheet(),
@@ -138,6 +138,7 @@ impl Parser {
             "goal" => self.workflow.goal = val,
             "start" => self.workflow.start = val,
             "exit" => self.workflow.exit = val,
+            "version" => self.workflow.version = val,
             _ => {}
         }
         Ok(())
@@ -1193,6 +1194,13 @@ mod tests {
         // Go's unquoteRaw only handles \" and \\
         let result = unquote_raw(r#""line1\nline2""#);
         assert_eq!(result, r"line1\nline2");
+    }
+
+    #[test]
+    fn test_workflow_version_field() {
+        let src = "workflow F\n  version: 1.0\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+        let wf = crate::parse(src, "t.dip").unwrap();
+        assert_eq!(wf.version, "1.0");
     }
 
     #[test]

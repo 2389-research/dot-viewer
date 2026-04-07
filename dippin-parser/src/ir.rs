@@ -10,6 +10,7 @@ use crate::duration::Duration;
 #[derive(Debug, Clone, Default)]
 pub struct Workflow {
     pub name: String,
+    pub version: String,
     pub goal: String,
     pub start: String,
     pub exit: String,
