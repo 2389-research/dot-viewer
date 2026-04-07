@@ -1,0 +1,26 @@
+workflow Styled
+  start: A
+  exit: B
+
+  agent A
+    prompt: x
+    model: m
+    provider: p
+
+  agent B
+    prompt: y
+    model: m
+    provider: p
+
+  edges
+    A -> B
+
+  stylesheet:
+    *
+      fontname: Helvetica
+    .important
+      color: red
+    #A
+      shape: box
+    agent
+      fillcolor: lightblue

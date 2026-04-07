@@ -2,6 +2,7 @@
 // ABOUTME: Validates parsing and DOT export against known-good inputs.
 
 use dippin_parser::ir::NodeKind;
+use dippin_parser::StyleSelector;
 use dippin_parser::{parse, parse_to_dot, parse_to_dot_with_options, ExportOptions, NodeConfig};
 
 fn testdata_path(name: &str) -> String {
@@ -454,6 +455,36 @@ fn test_dot_output_is_parseable_by_dot_parser() {
             fixture
         );
     }
+}
+
+#[test]
+fn test_stylesheet_selector_coverage() {
+    // ABOUTME: Ensures all four StyleSelector variants (Universal, Class, Id,
+    // Kind) round-trip through the parser from a stylesheet block.
+    let src = read_testdata("stylesheet.dip");
+    let wf = parse(&src, "stylesheet.dip").expect("stylesheet.dip should parse");
+
+    let has_universal = wf
+        .stylesheet
+        .iter()
+        .any(|r| matches!(r.selector, StyleSelector::Universal));
+    let has_class = wf
+        .stylesheet
+        .iter()
+        .any(|r| matches!(&r.selector, StyleSelector::Class(c) if c == "important"));
+    let has_id = wf
+        .stylesheet
+        .iter()
+        .any(|r| matches!(&r.selector, StyleSelector::Id(i) if i == "A"));
+    let has_kind = wf
+        .stylesheet
+        .iter()
+        .any(|r| matches!(&r.selector, StyleSelector::Kind(k) if k == "agent"));
+
+    assert!(has_universal, "expected a Universal (`*`) selector rule");
+    assert!(has_class, "expected a Class (`.important`) selector rule");
+    assert!(has_id, "expected an Id (`#A`) selector rule");
+    assert!(has_kind, "expected a Kind (`agent`) selector rule");
 }
 
 #[test]
