@@ -14,7 +14,9 @@ pub use parser::Parser;
 
 /// Parse a dippin source string into a Workflow IR.
 pub fn parse(source: &str, filename: &str) -> std::result::Result<Workflow, String> {
-    Parser::new(source, filename).parse()
+    Parser::new(source, filename)
+        .parse()
+        .map_err(|e| format!("{}", e))
 }
 
 /// Convert a dippin source string directly to DOT format.

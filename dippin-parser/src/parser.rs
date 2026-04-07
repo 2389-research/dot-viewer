@@ -3,14 +3,16 @@
 
 use std::collections::HashMap;
 
+use crate::error::{Diagnostic, DiagnosticKind, Error, Result};
 use crate::ir::*;
 use crate::lexer::{Lexer, Token, TokenType};
 
 /// Parser state holding the lexer, diagnostics, and the workflow being built.
 pub struct Parser {
     lexer: Lexer,
-    diagnostics: Vec<String>,
+    diagnostics: Vec<Diagnostic>,
     workflow: Workflow,
+    filename: String,
 }
 
 impl Parser {
@@ -20,14 +22,21 @@ impl Parser {
             lexer: Lexer::new(input, filename),
             diagnostics: Vec::new(),
             workflow: Workflow::default(),
+            filename: filename.to_string(),
         }
     }
 
     /// Parse the input and return a Workflow or an error with diagnostics.
-    pub fn parse(mut self) -> Result<Workflow, String> {
+    pub fn parse(mut self) -> Result<Workflow> {
         self.parse_top_level();
+        // Drain any diagnostics emitted by the lexer
+        let lex_diags = std::mem::take(&mut self.lexer.diagnostics);
+        self.diagnostics.extend(lex_diags);
         if !self.diagnostics.is_empty() {
-            return Err(format!("parsing errors: {}", self.diagnostics.join("; ")));
+            return Err(Error::Parse {
+                file: self.filename.clone(),
+                diagnostics: std::mem::take(&mut self.diagnostics),
+            });
         }
         Ok(self.workflow)
     }
@@ -99,9 +108,10 @@ impl Parser {
         if let Ok(kind) = t.value.parse::<NodeKind>() {
             self.parse_node(kind);
         } else {
-            self.diagnostics.push(format!(
-                "unexpected top-level identifier: {} at {}:{}",
-                t.value, t.location.line, t.location.column
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::Other,
+                format!("unexpected top-level identifier: {}", t.value),
+                t.location.clone(),
             ));
             self.lexer.next_token();
         }
@@ -126,9 +136,13 @@ impl Parser {
     fn expect(&mut self, expected: TokenType) {
         let tok = self.lexer.next_token();
         if tok.token_type != expected {
-            self.diagnostics.push(format!(
-                "expected {:?}, got {:?} at {}:{}",
-                expected, tok.token_type, tok.location.line, tok.location.column
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::UnexpectedToken {
+                    expected: format!("{:?}", expected),
+                    found: format!("{:?}", tok.token_type),
+                },
+                format!("expected {:?}, got {:?}", expected, tok.token_type),
+                tok.location.clone(),
             ));
         }
     }
@@ -225,9 +239,17 @@ impl Parser {
             "max_restarts" => self.workflow.defaults.max_restarts = self.parse_int(val, key, line),
             "cache_tools" => self.workflow.defaults.cache_tools = val == "true",
             _ => {
-                self.diagnostics.push(format!(
-                    "unknown defaults field {:?} at {}",
-                    key, line
+                self.diagnostics.push(Diagnostic::error(
+                    DiagnosticKind::UnknownField {
+                        scope: "defaults".to_string(),
+                        name: key.to_string(),
+                    },
+                    format!("unknown defaults field {:?}", key),
+                    SourceLocation {
+                        file: self.filename.clone(),
+                        line,
+                        column: 1,
+                    },
                 ));
             }
         }
@@ -575,9 +597,13 @@ impl Parser {
                     edge.restart = self.lexer.next_token().value == "true";
                 }
                 unknown => {
-                    self.diagnostics.push(format!(
-                        "unknown edge attribute {:?} at {}:{}",
-                        unknown, attr.location.line, attr.location.column
+                    self.diagnostics.push(Diagnostic::error(
+                        DiagnosticKind::UnknownField {
+                            scope: "edge".to_string(),
+                            name: unknown.to_string(),
+                        },
+                        format!("unknown edge attribute {:?}", unknown),
+                        attr.location.clone(),
                     ));
                 }
             }
@@ -622,9 +648,17 @@ impl Parser {
     /// Parse an integer from a string, recording a diagnostic on failure.
     fn parse_int(&mut self, val: &str, key: &str, line: usize) -> i32 {
         val.parse::<i32>().unwrap_or_else(|_| {
-            self.diagnostics.push(format!(
-                "invalid integer {:?} for {} at {}",
-                val, key, line
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::InvalidInteger {
+                    value: val.to_string(),
+                    field: key.to_string(),
+                },
+                format!("invalid integer {:?} for {}", val, key),
+                SourceLocation {
+                    file: self.filename.clone(),
+                    line,
+                    column: 1,
+                },
             ));
             0
         })
@@ -633,9 +667,17 @@ impl Parser {
     /// Parse a float from a string, recording a diagnostic on failure.
     fn parse_float(&mut self, val: &str, key: &str, line: usize) -> f64 {
         val.parse::<f64>().unwrap_or_else(|_| {
-            self.diagnostics.push(format!(
-                "invalid float {:?} for {} at {}",
-                val, key, line
+            self.diagnostics.push(Diagnostic::error(
+                DiagnosticKind::InvalidFloat {
+                    value: val.to_string(),
+                    field: key.to_string(),
+                },
+                format!("invalid float {:?} for {}", val, key),
+                SourceLocation {
+                    file: self.filename.clone(),
+                    line,
+                    column: 1,
+                },
             ));
             0.0
         })
