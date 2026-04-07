@@ -168,7 +168,7 @@ impl Lexer {
             return self.lex_key_colon_block(i, indent, content, line);
         }
 
-        self.lex_line(content);
+        self.lex_line(content, indent);
         self.tokens.push(Token {
             token_type: TokenType::Newline,
             value: String::new(),
@@ -396,12 +396,17 @@ impl Lexer {
     /// UTF-8 sequences don't inflate the reported column. We maintain a
     /// running `char_col` cursor alongside the byte cursor `i` so the char
     /// position is computed in O(total chars) rather than O(tokens * bytes).
-    fn lex_line(&mut self, line: &str) {
+    ///
+    /// `indent` is the column (1-based, char offset) of `line[0]` within the
+    /// original source line minus one — i.e. the number of leading whitespace
+    /// characters stripped before `content` was sliced. Passing it explicitly
+    /// keeps `lex_line` from implicitly depending on the indent stack.
+    fn lex_line(&mut self, line: &str, indent: usize) {
         let mut i = 0;
         // `col_offset` is the 1-based char column of `line[0]` in the original
-        // source line. `self.col` starts at 1; the indent prefix is pure ASCII
-        // so its char count equals its byte count.
-        let col_offset = self.col + *self.indent_stack.last().unwrap();
+        // source line. The indent prefix is pure ASCII (space/tab), so its
+        // char count equals its byte count.
+        let col_offset = 1 + indent;
         let mut char_col = col_offset;
 
         while i < line.len() {
