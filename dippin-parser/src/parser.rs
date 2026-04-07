@@ -85,7 +85,8 @@ impl Parser {
         let kw_loc = self.lexer.peek_token().location.clone();
         self.lexer.next_token(); // "workflow"
         let name_tok = self.expect_identifier("workflow")?;
-        if !self.workflow.name.is_empty() {
+        let is_duplicate = !self.workflow.name.is_empty();
+        if is_duplicate {
             self.diagnostics.push(Diagnostic::error(
                 DiagnosticKind::DuplicateWorkflow,
                 format!(
@@ -94,11 +95,20 @@ impl Parser {
                 ),
                 kw_loc,
             ));
+        } else {
+            self.workflow.name = name_tok.value;
         }
-        self.workflow.name = name_tok.value;
         self.expect(TokenType::Newline)?;
         self.expect(TokenType::Indent)?;
-        self.parse_workflow_body();
+        if is_duplicate {
+            // Parse the duplicate body into a throwaway workflow so we don't
+            // merge its nodes/edges/defaults into the first declaration.
+            let saved = std::mem::take(&mut self.workflow);
+            self.parse_workflow_body();
+            self.workflow = saved;
+        } else {
+            self.parse_workflow_body();
+        }
         self.expect(TokenType::Outdent)?;
         Ok(())
     }
@@ -1298,6 +1308,27 @@ mod tests {
             .diagnostics()
             .iter()
             .any(|d| matches!(d.kind, crate::DiagnosticKind::DuplicateWorkflow)));
+    }
+
+    #[test]
+    fn test_duplicate_workflow_preserves_first_body() {
+        // The second workflow declares a different start/exit and its own node set.
+        // Without the fix, those would bleed into the first workflow's state and
+        // trigger UndefinedNodeReference diagnostics. With the fix, the only
+        // diagnostic should be DuplicateWorkflow.
+        let src = "workflow F\n  start: A\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\nworkflow G\n  start: Z\n  exit: Z\n  agent Z\n    prompt: y\n    model: m\n    provider: p\n";
+        let err = crate::parse(src, "t.dip").unwrap_err();
+        let diags = err.diagnostics();
+        assert_eq!(
+            diags.len(),
+            1,
+            "expected exactly one diagnostic, got: {:?}",
+            diags
+        );
+        assert!(matches!(
+            diags[0].kind,
+            crate::DiagnosticKind::DuplicateWorkflow
+        ));
     }
 
     #[test]
