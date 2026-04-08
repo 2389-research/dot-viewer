@@ -12,6 +12,7 @@ name = "dot_core"
 
 [dependencies]
 dot-parser = { path = "../dot-parser", features = ["uniffi"] }
+dippin-parser = { path = "../dippin-parser" }
 uniffi = { version = "0.30", features = ["cli"] }
 
 [[bin]]
