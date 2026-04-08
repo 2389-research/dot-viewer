@@ -22,6 +22,7 @@
 		BA2F30ADCC9BE11B62944B56 /* DotDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FDD87B960FFD7A03A370FE /* DotDocument.swift */; };
 		D8EA87C3CBDDCF2D595C6616 /* preview.html in Resources */ = {isa = PBXBuildFile; fileRef = 5C735ED554FD6439F388259D /* preview.html */; };
 		E80C9EF1FC48BF7553B28653 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A1010B35D8A931BA5DC0CB2F /* Sparkle */; };
+		F488DE9643B70964721AC33B /* DotDocumentDippinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1CE7B77111D96937FB16EDE /* DotDocumentDippinTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		6034454B20B7F806316D882D /* DotViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DotViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		610092B008C5F5407DB15BEC /* dot_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dot_core.swift; sourceTree = "<group>"; };
 		6F3145AC3BE69E00937548BD /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		A1CE7B77111D96937FB16EDE /* DotDocumentDippinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotDocumentDippinTests.swift; sourceTree = "<group>"; };
 		B40A1A429E1CAB1A1E1C32E0 /* LineNumberGutterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberGutterView.swift; sourceTree = "<group>"; };
 		E5238B261D91896F0E908178 /* DotViewerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DotViewerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE55DC59F041A5EC609AD2CB /* dot_parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dot_parser.swift; sourceTree = "<group>"; };
@@ -135,6 +137,7 @@
 		D9A86737D7113498CFCD7965 /* DotViewerTests */ = {
 			isa = PBXGroup;
 			children = (
+				A1CE7B77111D96937FB16EDE /* DotDocumentDippinTests.swift */,
 				03296B3A0E482CCF2138E67E /* DotParserTests.swift */,
 			);
 			path = DotViewerTests;
@@ -265,6 +268,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F488DE9643B70964721AC33B /* DotDocumentDippinTests.swift in Sources */,
 				2EEEE0D62E1E454E2FB53D02 /* DotParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
