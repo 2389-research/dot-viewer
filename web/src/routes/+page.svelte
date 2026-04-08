@@ -77,7 +77,7 @@
         }
     }
 
-    function handleFileOpen(content: string) {
+    function handleFileOpen(content: string, _filename: string) {
         currentSource = content;
         editor.setContent(content);
         render(currentSource);
