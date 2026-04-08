@@ -45,23 +45,55 @@ pub struct ExportOptions {
     pub execution_path: Vec<String>,
 }
 
+/// A half-open byte range `[start, end)`. Used by source-map entries.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ByteRange {
+    /// Inclusive start byte offset.
+    pub start: usize,
+    /// Exclusive end byte offset.
+    pub end: usize,
+}
+
+impl ByteRange {
+    /// Create a new ByteRange.
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+}
+
+impl From<std::ops::Range<usize>> for ByteRange {
+    fn from(r: std::ops::Range<usize>) -> Self {
+        Self { start: r.start, end: r.end }
+    }
+}
+
+impl From<ByteRange> for std::ops::Range<usize> {
+    fn from(r: ByteRange) -> Self {
+        r.start..r.end
+    }
+}
+
 /// A pair of byte ranges linking a fragment of generated DOT to its original
 /// location in the Dippin source. `dot_range` indexes into the `dot_source`
 /// string returned alongside it; `dip_range` indexes into the original
 /// `.dip` source passed to the parser.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SourceMapEntry {
     /// Byte range in the generated DOT output.
-    pub dot_range: std::ops::Range<usize>,
+    pub dot_range: ByteRange,
     /// Byte range in the original dippin source.
-    pub dip_range: std::ops::Range<usize>,
+    pub dip_range: ByteRange,
 }
 
 /// DOT output plus a source map connecting fragments of the DOT back to
 /// their original location in the dippin source.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DippinConversion {
     /// Rendered DOT source.
     pub dot_source: String,

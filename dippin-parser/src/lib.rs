@@ -56,7 +56,7 @@ pub mod validate;
 
 pub use duration::Duration;
 pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
-pub use export_dot::{export_dot_with_map, DippinConversion, ExportOptions, RankDir, SourceMapEntry};
+pub use export_dot::{export_dot_with_map, ByteRange, DippinConversion, ExportOptions, RankDir, SourceMapEntry};
 pub use ir::{
     AgentConfig, BranchConfig, Condition, Edge, FanInConfig, HumanConfig, Node, NodeConfig,
     NodeIO, NodeKind, ParallelConfig, RetryConfig, SourceLocation, StyleSelector, StylesheetRule,

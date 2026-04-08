@@ -7,4 +7,5 @@ fn parse_to_dot_with_map_matches_parse_to_dot_output() {
     let plain = dippin_parser::parse_to_dot(src, "t.dip").unwrap();
     let with_map = dippin_parser::parse_to_dot_with_map(src, "t.dip").unwrap();
     assert_eq!(with_map.dot_source, plain, "dot_source must equal parse_to_dot output");
+    assert!(with_map.source_map.is_empty(), "scaffold must not emit entries yet");
 }
