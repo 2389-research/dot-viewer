@@ -6,23 +6,29 @@
     import Editor from '$lib/components/Editor.svelte';
     import Preview from '$lib/components/Preview.svelte';
     import Toolbar from '$lib/components/Toolbar.svelte';
-    import { renderDot, definitionRangeForNode, nodeIdAtOffset } from '$lib/wasm';
+    import { renderDot, definitionRangeForNode, nodeIdAtOffset, parseDippin, type DippinSourceMapEntry } from '$lib/wasm';
     import type { Engine } from '@hpcc-js/wasm-graphviz';
 
     let svg = $state('');
     let error = $state('');
     let loading = $state(true);
     let engine: Engine = $state('dot');
-    let currentSource = $state('digraph G {\n    A -> B\n    B -> C\n    C -> A\n}');
+    const initialSource = 'digraph G {\n    A -> B\n    B -> C\n    C -> A\n}';
+    let currentSource = $state(initialSource);
     let highlightedNode: string | undefined = $state(undefined);
     let wrap = $state(false);
     let editor: Editor;
+
+    let isDippin = $state(false);
+    let generatedDot = $state(initialSource);
+    let sourceMap = $state<DippinSourceMapEntry[]>([]);
+    let parseError = $state('');
 
     let renderGeneration = 0;
     let interactionGeneration = 0;
 
     onMount(async () => {
-        await render(currentSource);
+        await render(generatedDot);
         loading = false;
     });
 
@@ -41,19 +47,33 @@
         }
     }
 
-    function handleEditorChange(value: string) {
+    async function handleEditorChange(value: string) {
         currentSource = value;
-        render(currentSource);
+        if (isDippin) {
+            try {
+                const result = await parseDippin(value);
+                generatedDot = result.dotSource;
+                sourceMap = result.sourceMap;
+                parseError = '';
+            } catch (e) {
+                parseError = e instanceof Error ? e.message : String(e);
+                error = parseError;
+                return;
+            }
+        } else {
+            generatedDot = value;
+        }
+        render(generatedDot);
     }
 
     function handleEngineChange(newEngine: string) {
         engine = newEngine as Engine;
-        render(currentSource);
+        render(generatedDot);
     }
 
     async function handleNodeClick(nodeId: string) {
         const generation = ++interactionGeneration;
-        const source = currentSource;
+        const source = generatedDot;
         highlightedNode = nodeId;
         const range = await definitionRangeForNode(source, nodeId);
         if (generation === interactionGeneration && range) {
@@ -63,7 +83,8 @@
 
     async function handleCursorChange(offset: number) {
         const generation = ++interactionGeneration;
-        const source = currentSource;
+        // TODO(T15): translate offset via dotOffsetFromDip
+        const source = generatedDot;
         const nodeId = await nodeIdAtOffset(source, offset);
         if (generation !== interactionGeneration) return;
         highlightedNode = nodeId;
@@ -77,10 +98,28 @@
         }
     }
 
-    function handleFileOpen(content: string, _filename: string) {
+    async function handleFileOpen(content: string, filename: string) {
         currentSource = content;
         editor.setContent(content);
-        render(currentSource);
+        if (filename.endsWith('.dip')) {
+            isDippin = true;
+            try {
+                const result = await parseDippin(content);
+                generatedDot = result.dotSource;
+                sourceMap = result.sourceMap;
+                parseError = '';
+            } catch (e) {
+                parseError = e instanceof Error ? e.message : String(e);
+                error = parseError;
+                return;
+            }
+        } else {
+            isDippin = false;
+            generatedDot = content;
+            sourceMap = [];
+            parseError = '';
+        }
+        render(generatedDot);
     }
 </script>
 
