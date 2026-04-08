@@ -133,9 +133,19 @@ pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
 #[allow(dead_code)] // Used by export_dot_with_map starting in Task 3.
 fn compute_line_offsets(source: &str) -> Vec<usize> {
     let mut offsets = vec![0usize];
-    for (i, ch) in source.char_indices() {
-        if ch == '\n' {
-            offsets.push(i + 1);
+    let bytes = source.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\r' if bytes.get(i + 1) == Some(&b'\n') => {
+                offsets.push(i + 2);
+                i += 2;
+            }
+            b'\r' | b'\n' => {
+                offsets.push(i + 1);
+                i += 1;
+            }
+            _ => i += 1,
         }
     }
     offsets
@@ -758,6 +768,16 @@ mod tests {
         fn line_offsets_no_trailing_newline() {
             // "abc\ndef" → line 1 @ 0, line 2 @ 4.
             assert_eq!(compute_line_offsets("abc\ndef"), vec![0, 4]);
+        }
+
+        #[test]
+        fn compute_line_offsets_handles_crlf() {
+            assert_eq!(compute_line_offsets("abc\r\ndef\r\n"), vec![0, 5, 10]);
+        }
+
+        #[test]
+        fn compute_line_offsets_handles_lone_cr() {
+            assert_eq!(compute_line_offsets("abc\rdef"), vec![0, 4]);
         }
     }
 }
