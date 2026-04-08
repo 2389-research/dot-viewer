@@ -970,8 +970,8 @@ fn split_key_value(line: &str) -> Option<(String, String)> {
     ))
 }
 
-/// Unquote a double-quoted string, handling only `\"` and `\\` escapes.
-/// Go parity: dippin-lang's `unquoteRaw` does not translate `\n`/`\t`/`\r`.
+/// Unquote a double-quoted string, handling `\"`, `\\`, `\n`, `\t`, and `\r`.
+/// Unknown escape sequences are preserved literally (e.g. `\q` stays as `\q`).
 fn unquote_raw(raw: &str) -> String {
     if raw.len() < 2 || !raw.starts_with('"') || !raw.ends_with('"') {
         return raw.to_string();
@@ -988,6 +988,18 @@ fn unquote_raw(raw: &str) -> String {
                 }
                 Some('\\') => {
                     result.push('\\');
+                    chars.next();
+                }
+                Some('n') => {
+                    result.push('\n');
+                    chars.next();
+                }
+                Some('t') => {
+                    result.push('\t');
+                    chars.next();
+                }
+                Some('r') => {
+                    result.push('\r');
                     chars.next();
                 }
                 _ => result.push('\\'),
@@ -1319,13 +1331,6 @@ mod tests {
     }
 
     #[test]
-    fn test_unquote_raw_only_handles_quote_and_backslash() {
-        // Go's unquoteRaw only handles \" and \\
-        let result = unquote_raw(r#""line1\nline2""#);
-        assert_eq!(result, r"line1\nline2");
-    }
-
-    #[test]
     fn test_validation_skipped_when_parse_errors_exist() {
         // This fixture has both a parse-time UnknownField (`bogus: 1`) AND an
         // undefined node reference (`exit: Missing`). Validation should be
@@ -1445,5 +1450,17 @@ mod tests {
     fn test_split_comma() {
         assert_eq!(split_comma("a, b, c"), vec!["a", "b", "c"]);
         assert_eq!(split_comma("single"), vec!["single"]);
+    }
+
+    #[test]
+    fn test_unquote_raw_handles_common_escapes() {
+        assert_eq!(unquote_raw(r#""hello\nworld""#), "hello\nworld");
+        assert_eq!(unquote_raw(r#""tab\there""#), "tab\there");
+        assert_eq!(unquote_raw(r#""cr\rreturn""#), "cr\rreturn");
+        // Existing escapes still work.
+        assert_eq!(unquote_raw(r#""she said \"hi\"""#), r#"she said "hi""#);
+        assert_eq!(unquote_raw(r#""back\\slash""#), r"back\slash");
+        // Unknown escapes are preserved literally (current behavior).
+        assert_eq!(unquote_raw(r#""\q""#), r"\q");
     }
 }
