@@ -72,4 +72,68 @@ final class DotDocumentDippinTests: XCTestCase {
         XCTAssertNotNil(dipRange)
         XCTAssertTrue(dipRange!.contains(agentOffset))
     }
+
+    func testOffsetTranslationBoundaryBehavior() throws {
+        let src = """
+        workflow F
+          start: A
+          exit: A
+          agent A
+            prompt: hi
+            model: m
+            provider: p
+        """
+        let doc = DotDocument()
+        try doc.loadDippin(from: src)
+        let entry = doc.sourceMap[0]
+
+        // Inclusive lower bound
+        XCTAssertEqual(doc.dotOffsetForDippinOffset(Int(entry.dipStart)), Int(entry.dotStart))
+        // Exclusive upper bound returns nil
+        XCTAssertNil(doc.dotOffsetForDippinOffset(Int(entry.dipEnd)))
+        // Same for the reverse direction
+        XCTAssertNotNil(doc.dippinRangeForDotOffset(Int(entry.dotStart)))
+        XCTAssertNil(doc.dippinRangeForDotOffset(Int(entry.dotEnd)))
+    }
+
+    func testOffsetTranslationOutOfRangeReturnsNil() throws {
+        let src = """
+        workflow F
+          start: A
+          exit: A
+          agent A
+            prompt: hi
+            model: m
+            provider: p
+        """
+        let doc = DotDocument()
+        try doc.loadDippin(from: src)
+        XCTAssertNil(doc.dotOffsetForDippinOffset(999_999))
+        XCTAssertNil(doc.dippinRangeForDotOffset(999_999))
+    }
+
+    func testOffsetTranslationFindsLaterEntry() throws {
+        // Two agents → two source-map entries; verify the second is reachable.
+        let src = """
+        workflow F
+          start: A
+          exit: B
+          agent A
+            prompt: hi
+            model: m
+            provider: p
+          agent B
+            prompt: bye
+            model: m
+            provider: p
+          edges
+            A -> B
+        """
+        let doc = DotDocument()
+        try doc.loadDippin(from: src)
+        XCTAssertGreaterThan(doc.sourceMap.count, 1)
+        let second = doc.sourceMap[1]
+        let mid = (Int(second.dipStart) + Int(second.dipEnd)) / 2
+        XCTAssertEqual(doc.dotOffsetForDippinOffset(mid), Int(second.dotStart))
+    }
 }

@@ -134,9 +134,11 @@ final class DotDocument: ReferenceFileDocument {
         }
     }
 
-    /// Translate an offset in `text` (dippin space) to the corresponding offset
-    /// in `generatedDot` (DOT space). Returns identity for non-dippin docs.
-    /// Returns nil if no entry contains the offset.
+    /// Translate a dippin-space offset to DOT space, collapsing to the start of
+    /// the generated DOT construct (point, not range). Returns identity for
+    /// non-dippin docs. Uses half-open `[dipStart, dipEnd)` matching, so an
+    /// offset exactly at `dipEnd` returns nil. Assumes source-map entries are
+    /// non-overlapping; first match wins.
     func dotOffsetForDippinOffset(_ dipOffset: Int) -> Int? {
         if !_isDippin { return dipOffset }
         for entry in _sourceMap {
@@ -149,8 +151,11 @@ final class DotDocument: ReferenceFileDocument {
         return nil
     }
 
-    /// Translate an offset in `generatedDot` (DOT space) to a range in `text`
-    /// (dippin space). Returns `offset..<offset` for non-dippin docs.
+    /// Translate a DOT-space offset to the full dippin-space range of the
+    /// originating construct (asymmetric with `dotOffsetForDippinOffset`, which
+    /// collapses to a point). Returns `offset..<offset` for non-dippin docs.
+    /// Uses half-open `[dotStart, dotEnd)` matching, so an offset exactly at
+    /// `dotEnd` returns nil. Assumes non-overlapping entries; first match wins.
     func dippinRangeForDotOffset(_ dotOffset: Int) -> Range<Int>? {
         if !_isDippin { return dotOffset..<dotOffset }
         for entry in _sourceMap {
