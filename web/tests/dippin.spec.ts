@@ -10,36 +10,33 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixtureDir = path.join(here, 'fixtures');
 
-test('opening a .dip file renders the converted DOT graph', async ({ page }) => {
+// The default graph contains nodes A/B/C, which collide with our fixture's
+// A/B. To prove the .dip actually loaded we wait for an editor line that only
+// the dippin fixture produces ("workflow Hello") before asserting on the SVG.
+async function openSampleDip(page: import('@playwright/test').Page) {
     await page.goto('/');
-    // Wait for default graph to render so we know the wasm is loaded.
     await page.waitForSelector('.svg-container svg', { timeout: 10000 });
-
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(path.join(fixtureDir, 'sample.dip'));
+    // Editor mirrors the raw dippin source — wait until the fixture's first
+    // line is visible so we know parseDippin + setContent have run.
+    await expect(
+        page.locator('.cm-editor .cm-line', { hasText: 'workflow Hello' }).first(),
+    ).toBeVisible({ timeout: 5000 });
+}
 
-    // After opening, the SVG should re-render with the dippin-derived graph.
-    // Wait briefly for the parse + render pipeline.
-    await page.waitForTimeout(500);
+test('opening a .dip file renders the converted DOT graph', async ({ page }) => {
+    await openSampleDip(page);
     await expect(page.locator('.svg-container svg')).toBeVisible();
-    const nodeCount = await page.locator('.svg-container .node').count();
-    expect(nodeCount).toBeGreaterThanOrEqual(2);
+    // sample.dip declares exactly two agents (A, B); the converted DOT must
+    // produce exactly those two nodes — distinct from the default A/B/C graph.
+    await expect(page.locator('.svg-container .node')).toHaveCount(2);
 });
 
 test('clicking a rendered node highlights dippin source', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('.svg-container svg', { timeout: 10000 });
-
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(path.join(fixtureDir, 'sample.dip'));
-    await page.waitForTimeout(500);
-
-    // Click the first SVG node and verify the editor shows a highlighted
-    // block in the dippin source.
+    await openSampleDip(page);
     const firstNode = page.locator('.svg-container .node').first();
     await firstNode.click();
-    await page.waitForTimeout(300);
-
     // The highlighted-line decoration should appear in the editor.
     await expect(page.locator('.cm-editor .cm-highlighted-line').first()).toBeVisible();
 });
