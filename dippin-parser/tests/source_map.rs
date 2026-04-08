@@ -75,3 +75,32 @@ fn source_map_contains_entries_for_edges() {
     let dot_slice = &conv.dot_source[edge_entry.dot_range.start..edge_entry.dot_range.end];
     assert!(dot_slice.contains("->"), "edge dot slice must contain '->', got: {:?}", dot_slice);
 }
+
+#[test]
+fn source_map_golden_simple() {
+    let src = include_str!("fixtures/source_map_simple.dip");
+    let conv = dippin_parser::parse_to_dot_with_map(src, "source_map_simple.dip").unwrap();
+
+    // The golden fixture pins the DOT slice substring for each source-map entry.
+    // Update this test and regenerate if the emitted DOT format intentionally changes.
+    let expected_dot_slices = [
+        "\"A\"",         // agent A node line must reference "A"
+        "\"B\"",         // agent B node line must reference "B"
+        "A -> B",        // edge line (emitted unquoted by write_edge_dot)
+    ];
+    assert_eq!(conv.source_map.len(), expected_dot_slices.len());
+    for (i, expected) in expected_dot_slices.iter().enumerate() {
+        let entry = &conv.source_map[i];
+        let dot_slice = &conv.dot_source[entry.dot_range.start..entry.dot_range.end];
+        assert!(
+            dot_slice.contains(expected),
+            "entry {} dot slice must contain {:?}, got: {:?}",
+            i, expected, dot_slice,
+        );
+        let dip_slice = &src[entry.dip_range.start..entry.dip_range.end];
+        assert!(!dip_slice.is_empty(), "entry {} dip slice must be non-empty", i);
+    }
+
+    // First two entries (nodes) must not overlap each other in dippin space.
+    assert!(conv.source_map[0].dip_range.end <= conv.source_map[1].dip_range.start);
+}
