@@ -128,6 +128,19 @@ pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
     b
 }
 
+/// Return a vector where element `i` is the byte offset of line `i+1` (1-based)
+/// in `source`. Always contains at least one element (offset 0 for line 1).
+#[allow(dead_code)] // Used by export_dot_with_map starting in Task 3.
+fn compute_line_offsets(source: &str) -> Vec<usize> {
+    let mut offsets = vec![0usize];
+    for (i, ch) in source.char_indices() {
+        if ch == '\n' {
+            offsets.push(i + 1);
+        }
+    }
+    offsets
+}
+
 /// Render a workflow as DOT and also produce a source map. `dippin_source`
 /// must be the same text originally passed to the parser.
 pub fn export_dot_with_map(w: &Workflow, opts: &ExportOptions, dippin_source: &str) -> DippinConversion {
@@ -722,5 +735,29 @@ mod tests {
             "human prompt should appear with include_prompts=true, got:\n{}",
             dot
         );
+    }
+
+    #[cfg(test)]
+    mod source_map_tests {
+        use super::super::*;
+
+        #[test]
+        fn line_offsets_table() {
+            let src = "abc\ndef\n\nghi";
+            let offsets = compute_line_offsets(src);
+            // Line 1 starts at 0, line 2 at 4, line 3 at 8, line 4 at 9 (after empty line).
+            assert_eq!(offsets, vec![0, 4, 8, 9]);
+        }
+
+        #[test]
+        fn line_offsets_empty_source() {
+            assert_eq!(compute_line_offsets(""), vec![0]);
+        }
+
+        #[test]
+        fn line_offsets_no_trailing_newline() {
+            // "abc\ndef" → line 1 @ 0, line 2 @ 4.
+            assert_eq!(compute_line_offsets("abc\ndef"), vec![0, 4]);
+        }
     }
 }
