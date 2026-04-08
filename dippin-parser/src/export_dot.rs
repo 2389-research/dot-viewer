@@ -130,7 +130,6 @@ pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
 
 /// Return a vector where element `i` is the byte offset of line `i+1` (1-based)
 /// in `source`. Always contains at least one element (offset 0 for line 1).
-#[allow(dead_code)] // Used by export_dot_with_map starting in Task 3.
 fn compute_line_offsets(source: &str) -> Vec<usize> {
     let mut offsets = vec![0usize];
     let bytes = source.as_bytes();
@@ -154,10 +153,65 @@ fn compute_line_offsets(source: &str) -> Vec<usize> {
 /// Render a workflow as DOT and also produce a source map. `dippin_source`
 /// must be the same text originally passed to the parser.
 pub fn export_dot_with_map(w: &Workflow, opts: &ExportOptions, dippin_source: &str) -> DippinConversion {
-    let dot_source = export_dot(w, opts);
-    // Source map entries will be populated in later tasks.
-    let _ = dippin_source;
-    DippinConversion { dot_source, source_map: Vec::new() }
+    let line_offsets = compute_line_offsets(dippin_source);
+    let total_len = dippin_source.len();
+    let line_start = |line: usize| -> usize {
+        if line == 0 || line > line_offsets.len() {
+            return total_len;
+        }
+        line_offsets[line - 1]
+    };
+
+    // Build a sorted list of construct start-lines (nodes + edges) plus a
+    // sentinel. The dippin range of each construct is
+    // [its line_start .. next boundary's line_start).
+    let mut boundaries: Vec<usize> = Vec::new();
+    for n in &w.nodes {
+        boundaries.push(n.source.line);
+    }
+    for e in &w.edges {
+        boundaries.push(e.source.line);
+    }
+    boundaries.sort_unstable();
+    boundaries.push(usize::MAX);
+
+    let next_boundary_after = |line: usize| -> usize {
+        for &b in &boundaries {
+            if b > line {
+                return if b == usize::MAX { total_len } else { line_start(b) };
+            }
+        }
+        total_len
+    };
+
+    let mut dot_source = String::new();
+    let mut source_map: Vec<SourceMapEntry> = Vec::new();
+
+    write_dot_header(&mut dot_source, w, opts);
+
+    for n in &w.nodes {
+        let dot_start = dot_source.len();
+        write_node_dot(&mut dot_source, n, w, opts);
+        let dot_end = dot_source.len();
+
+        let dip_start = line_start(n.source.line);
+        let dip_end = next_boundary_after(n.source.line);
+
+        source_map.push(SourceMapEntry {
+            dot_range: ByteRange::new(dot_start, dot_end),
+            dip_range: ByteRange::new(dip_start, dip_end),
+        });
+    }
+
+    dot_source.push('\n');
+
+    for e in &w.edges {
+        write_edge_dot(&mut dot_source, e);
+    }
+
+    dot_source.push_str("}\n");
+
+    DippinConversion { dot_source, source_map }
 }
 
 /// Write the digraph opening and global attributes.
