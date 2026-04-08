@@ -111,21 +111,36 @@ impl crate::ir::Workflow {
 /// Render a workflow as a DOT language string.
 pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
     let mut b = String::new();
+    write_dot_body(&mut b, w, opts, |_, _, _| {});
+    b
+}
 
-    write_dot_header(&mut b, w, opts);
+/// Write the full DOT body for `w` into `b`. Invokes `on_node` after each
+/// node statement with `(node_index, dot_start, dot_end)` so callers that
+/// build a source map can capture DOT byte offsets without duplicating the
+/// output structure.
+fn write_dot_body(
+    b: &mut String,
+    w: &Workflow,
+    opts: &ExportOptions,
+    mut on_node: impl FnMut(usize, usize, usize),
+) {
+    write_dot_header(b, w, opts);
 
-    for n in &w.nodes {
-        write_node_dot(&mut b, n, w, opts);
+    for (i, n) in w.nodes.iter().enumerate() {
+        let dot_start = b.len();
+        write_node_dot(b, n, w, opts);
+        let dot_end = b.len();
+        on_node(i, dot_start, dot_end);
     }
 
     b.push('\n');
 
     for e in &w.edges {
-        write_edge_dot(&mut b, e);
+        write_edge_dot(b, e);
     }
 
     b.push_str("}\n");
-    b
 }
 
 /// Return a vector where element `i` is the byte offset of line `i+1` (1-based)
@@ -175,41 +190,28 @@ pub fn export_dot_with_map(w: &Workflow, opts: &ExportOptions, dippin_source: &s
     boundaries.sort_unstable();
     boundaries.push(usize::MAX);
 
+    // binary search via partition_point since `boundaries` is sorted
     let next_boundary_after = |line: usize| -> usize {
-        for &b in &boundaries {
-            if b > line {
-                return if b == usize::MAX { total_len } else { line_start(b) };
-            }
-        }
-        total_len
+        let idx = boundaries.partition_point(|&b| b <= line);
+        let b = boundaries[idx]; // safe: MAX sentinel guarantees idx < len
+        if b == usize::MAX { total_len } else { line_start(b) }
     };
 
     let mut dot_source = String::new();
-    let mut source_map: Vec<SourceMapEntry> = Vec::new();
+    // Pre-allocate: one entry per node. Edge entries will be added in Task 4.
+    let mut source_map: Vec<SourceMapEntry> = Vec::with_capacity(w.nodes.len());
 
-    write_dot_header(&mut dot_source, w, opts);
-
-    for n in &w.nodes {
-        let dot_start = dot_source.len();
-        write_node_dot(&mut dot_source, n, w, opts);
-        let dot_end = dot_source.len();
-
+    // Capture node DOT ranges via callback, compute dip ranges up front.
+    let nodes = &w.nodes;
+    write_dot_body(&mut dot_source, w, opts, |i, dot_start, dot_end| {
+        let n = &nodes[i];
         let dip_start = line_start(n.source.line);
         let dip_end = next_boundary_after(n.source.line);
-
         source_map.push(SourceMapEntry {
             dot_range: ByteRange::new(dot_start, dot_end),
             dip_range: ByteRange::new(dip_start, dip_end),
         });
-    }
-
-    dot_source.push('\n');
-
-    for e in &w.edges {
-        write_edge_dot(&mut dot_source, e);
-    }
-
-    dot_source.push_str("}\n");
+    });
 
     DippinConversion { dot_source, source_map }
 }
