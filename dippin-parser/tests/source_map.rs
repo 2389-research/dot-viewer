@@ -42,8 +42,8 @@ fn source_map_node_range_terminates_at_following_edge() {
     let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: hi\n    model: m\n    provider: p\n  agent B\n    prompt: bye\n    model: m\n    provider: p\n  edges\n    A -> B\n";
     let conv = dippin_parser::parse_to_dot_with_map(src, "t.dip").unwrap();
 
-    // Expect 2 node entries (edge entries land in Task 4).
-    assert_eq!(conv.source_map.len(), 2);
+    // Expect 2 node entries plus 1 edge entry.
+    assert_eq!(conv.source_map.len(), 3);
 
     let a = &conv.source_map[0];
     let b = &conv.source_map[1];
@@ -58,4 +58,20 @@ fn source_map_node_range_terminates_at_following_edge() {
     let b_slice = &src[b.dip_range.start..b.dip_range.end];
     assert!(b_slice.contains("agent B"), "b_slice must contain 'agent B': {:?}", b_slice);
     assert!(!b_slice.contains("A -> B"), "b_slice must not reach into edges block: {:?}", b_slice);
+}
+
+#[test]
+fn source_map_contains_entries_for_edges() {
+    let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: hi\n    model: m\n    provider: p\n  agent B\n    prompt: bye\n    model: m\n    provider: p\n  edges\n    A -> B\n";
+    let conv = dippin_parser::parse_to_dot_with_map(src, "t.dip").unwrap();
+    // 2 nodes + 1 edge.
+    assert_eq!(conv.source_map.len(), 3);
+
+    // Last entry is the edge.
+    let edge_entry = conv.source_map.last().unwrap();
+    let dip_slice = &src[edge_entry.dip_range.start..edge_entry.dip_range.end];
+    assert!(dip_slice.contains("A -> B"), "edge dip slice must contain 'A -> B', got: {:?}", dip_slice);
+
+    let dot_slice = &conv.dot_source[edge_entry.dot_range.start..edge_entry.dot_range.end];
+    assert!(dot_slice.contains("->"), "edge dot slice must contain '->', got: {:?}", dot_slice);
 }

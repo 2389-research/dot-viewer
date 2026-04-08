@@ -111,19 +111,20 @@ impl crate::ir::Workflow {
 /// Render a workflow as a DOT language string.
 pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
     let mut b = String::new();
-    write_dot_body(&mut b, w, opts, |_, _, _| {});
+    write_dot_body(&mut b, w, opts, |_, _, _| {}, |_, _, _| {});
     b
 }
 
 /// Write the full DOT body for `w` into `b`. Invokes `on_node` after each
-/// node statement with `(node_index, dot_start, dot_end)` so callers that
-/// build a source map can capture DOT byte offsets without duplicating the
-/// output structure.
+/// node statement and `on_edge` after each edge statement with
+/// `(index, dot_start, dot_end)` so callers that build a source map can
+/// capture DOT byte offsets without duplicating the output structure.
 fn write_dot_body(
     b: &mut String,
     w: &Workflow,
     opts: &ExportOptions,
     mut on_node: impl FnMut(usize, usize, usize),
+    mut on_edge: impl FnMut(usize, usize, usize),
 ) {
     write_dot_header(b, w, opts);
 
@@ -136,8 +137,11 @@ fn write_dot_body(
 
     b.push('\n');
 
-    for e in &w.edges {
+    for (i, e) in w.edges.iter().enumerate() {
+        let dot_start = b.len();
         write_edge_dot(b, e);
+        let dot_end = b.len();
+        on_edge(i, dot_start, dot_end);
     }
 
     b.push_str("}\n");
@@ -198,20 +202,41 @@ pub fn export_dot_with_map(w: &Workflow, opts: &ExportOptions, dippin_source: &s
     };
 
     let mut dot_source = String::new();
-    // Pre-allocate: one entry per node. Edge entries will be added in Task 4.
-    let mut source_map: Vec<SourceMapEntry> = Vec::with_capacity(w.nodes.len());
 
-    // Capture node DOT ranges via callback, compute dip ranges up front.
-    let nodes = &w.nodes;
-    write_dot_body(&mut dot_source, w, opts, |i, dot_start, dot_end| {
-        let n = &nodes[i];
+    // Collect DOT byte ranges for nodes and edges during the single-pass
+    // write, then compute dippin ranges afterwards. Two-phase to sidestep
+    // the two-mutable-borrow issue of passing two FnMut closures that both
+    // want to push into the same Vec.
+    let mut node_rows: Vec<(usize, usize, usize)> = Vec::with_capacity(w.nodes.len());
+    let mut edge_rows: Vec<(usize, usize, usize)> = Vec::with_capacity(w.edges.len());
+    write_dot_body(
+        &mut dot_source,
+        w,
+        opts,
+        |i, s, e| node_rows.push((i, s, e)),
+        |i, s, e| edge_rows.push((i, s, e)),
+    );
+
+    let mut source_map: Vec<SourceMapEntry> =
+        Vec::with_capacity(w.nodes.len() + w.edges.len());
+    for (i, dot_start, dot_end) in node_rows {
+        let n = &w.nodes[i];
         let dip_start = line_start(n.source.line);
         let dip_end = next_boundary_after(n.source.line);
         source_map.push(SourceMapEntry {
             dot_range: ByteRange::new(dot_start, dot_end),
             dip_range: ByteRange::new(dip_start, dip_end),
         });
-    });
+    }
+    for (i, dot_start, dot_end) in edge_rows {
+        let e = &w.edges[i];
+        let dip_start = line_start(e.source.line);
+        let dip_end = next_boundary_after(e.source.line);
+        source_map.push(SourceMapEntry {
+            dot_range: ByteRange::new(dot_start, dot_end),
+            dip_range: ByteRange::new(dip_start, dip_end),
+        });
+    }
 
     DippinConversion { dot_source, source_map }
 }
