@@ -349,18 +349,18 @@ struct EditorView: NSViewRepresentable {
                   let stmt = graph.definitionForNode(nodeId) else { return }
 
             let dotRange = stmt.sourceRange
-            // Translate both endpoints so plain-DOT identity preserves the full
-            // selection length, and dippin docs span from the first to last entry.
-            guard let dipStart = document.dippinRangeForDotOffset(dotRange.location)?.lowerBound else { return }
-            let dotEnd = dotRange.location + dotRange.length
-            let dipEnd: Int
-            if let endRange = document.dippinRangeForDotOffset(max(dotEnd - 1, dotRange.location)) {
-                dipEnd = endRange.upperBound
+            let nsRange: NSRange
+            if !document.isDippin {
+                // Plain DOT: editor buffer == DOT, select the full statement directly.
+                nsRange = dotRange
             } else {
-                dipEnd = dipStart
+                // Dippin: translate the DOT range endpoints into dippin space.
+                guard let dipStart = document.dippinRangeForDotOffset(dotRange.location)?.lowerBound else { return }
+                let dotEnd = dotRange.location + dotRange.length
+                let probe = max(dotEnd - 1, dotRange.location)
+                let dipEnd = document.dippinRangeForDotOffset(probe)?.upperBound ?? dipStart
+                nsRange = NSRange(location: dipStart, length: max(0, dipEnd - dipStart))
             }
-            let length = max(0, dipEnd - dipStart)
-            let nsRange = NSRange(location: dipStart, length: length)
             let textNSLength = (textView.string as NSString).length
             guard nsRange.location + nsRange.length <= textNSLength else { return }
             textView.setSelectedRange(nsRange)
