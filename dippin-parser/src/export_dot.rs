@@ -160,6 +160,9 @@ fn apply_config_attrs(attrs: &mut BTreeMap<String, String>, cfg: &NodeConfig) {
             if !c.prompt.is_empty() {
                 attrs.insert("prompt".to_string(), c.prompt.clone());
             }
+            if !c.system_prompt.is_empty() {
+                attrs.insert("system_prompt".to_string(), c.system_prompt.clone());
+            }
             if !c.model.is_empty() {
                 attrs.insert("model".to_string(), c.model.clone());
             }
@@ -181,6 +184,9 @@ fn apply_config_attrs(attrs: &mut BTreeMap<String, String>, cfg: &NodeConfig) {
             }
             if !c.default.is_empty() {
                 attrs.insert("default".to_string(), c.default.clone());
+            }
+            if !c.prompt.is_empty() {
+                attrs.insert("prompt".to_string(), c.prompt.clone());
             }
         }
         NodeConfig::Subgraph(c) => {
@@ -559,5 +565,36 @@ mod tests {
         let dot = export_dot(&wf, &ExportOptions::default());
         assert!(dot.contains("restart=\"true\""));
         assert!(dot.contains("style=\"dashed\""));
+    }
+
+    #[test]
+    fn include_prompts_emits_agent_system_prompt_and_human_prompt() {
+        let src = r#"workflow F
+  start: A
+  exit: H
+  agent A
+    prompt: do work
+    system_prompt: you are helpful
+    model: m
+    provider: p
+  human H
+    mode: freeform
+    prompt: what now
+  edges
+    A -> H
+"#;
+        let mut opts = ExportOptions::default();
+        opts.include_prompts = true;
+        let dot = crate::parse_to_dot_with_options(src, "t.dip", &opts).expect("parse + export");
+        assert!(
+            dot.contains("system_prompt=\"you are helpful\""),
+            "agent system_prompt should appear with include_prompts=true, got:\n{}",
+            dot
+        );
+        assert!(
+            dot.contains("prompt=\"what now\""),
+            "human prompt should appear with include_prompts=true, got:\n{}",
+            dot
+        );
     }
 }
