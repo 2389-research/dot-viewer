@@ -150,7 +150,34 @@ fn write_node_dot(b: &mut String, n: &Node, w: &Workflow, opts: &ExportOptions) 
         apply_config_attrs(&mut attrs, &n.config);
     }
 
+    apply_stylesheet(&mut attrs, n, w);
+
     let _ = writeln!(b, "  {} {};", dot_id(&n.id), format_dot_attrs(&attrs));
+}
+
+/// Merge any stylesheet rules that match `n` into `attrs`.
+///
+/// Application order is Universal -> Kind -> Class -> Id. Within the same
+/// specificity bucket, rules are applied in source order (later rules
+/// overwrite earlier ones for the same property). This mirrors the upstream
+/// Go exporter's behavior and intentionally allows stylesheet rules to
+/// override built-in attribute derivations like `shape`.
+fn apply_stylesheet(attrs: &mut BTreeMap<String, String>, n: &Node, w: &Workflow) {
+    let buckets: [fn(&StyleSelector, &Node) -> bool; 4] = [
+        |s, _| matches!(s, StyleSelector::Universal),
+        |s, n| matches!(s, StyleSelector::Kind(k) if k == &n.kind.to_string()),
+        |s, n| matches!(s, StyleSelector::Class(c) if n.classes.iter().any(|nc| nc == c)),
+        |s, n| matches!(s, StyleSelector::Id(id) if id == &n.id),
+    ];
+    for matches_bucket in buckets {
+        for rule in &w.stylesheet {
+            if matches_bucket(&rule.selector, n) {
+                for (k, v) in &rule.properties {
+                    attrs.insert(k.clone(), v.clone());
+                }
+            }
+        }
+    }
 }
 
 /// Add config-specific attributes to a node's attribute map.
@@ -565,6 +592,41 @@ mod tests {
         let dot = export_dot(&wf, &ExportOptions::default());
         assert!(dot.contains("restart=\"true\""));
         assert!(dot.contains("style=\"dashed\""));
+    }
+
+    #[test]
+    fn stylesheet_rules_apply_to_exported_nodes() {
+        let src = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/testdata/stylesheet.dip"
+        ))
+        .expect("fixture readable");
+        let dot = crate::parse_to_dot(&src, "stylesheet.dip").expect("parse + export");
+
+        // Universal: every node should have fontname="Helvetica" applied as
+        // a per-node attr (in addition to the graph-level node defaults).
+        assert!(
+            dot.matches(r#"fontname="Helvetica""#).count() >= 4,
+            "universal rule should apply to all nodes, got:\n{}",
+            dot
+        );
+        // Kind(agent): agent nodes should have fillcolor="lightblue"
+        assert!(
+            dot.contains(r#"fillcolor="lightblue""#),
+            "kind selector `agent` should apply, got:\n{}",
+            dot
+        );
+        // Id(A): node A should have shape="box" (overriding the default
+        // start-node shape Mdiamond).
+        let a_line = dot
+            .lines()
+            .find(|l| l.trim_start().starts_with("A "))
+            .expect("node A should appear in DOT");
+        assert!(
+            a_line.contains(r#"shape="box""#),
+            "id selector #A should apply shape=box, got line: {}",
+            a_line
+        );
     }
 
     #[test]
