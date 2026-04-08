@@ -22,10 +22,10 @@ final class DotDocument: ReferenceFileDocument {
 
     // Dippin-related state. For plain DOT documents, isDippin is false,
     // generatedDot mirrors text, and sourceMap is empty.
-    private var _isDippin: Bool = false
-    private var _generatedDot: String = ""
-    private var _sourceMap: [SourceMapEntry] = []
-    private var _parseError: String? = nil
+    @Published private var _isDippin: Bool = false
+    @Published private var _generatedDot: String = ""
+    @Published private var _sourceMap: [SourceMapEntry] = []
+    @Published private var _parseError: String? = nil
 
     var isDippin: Bool { _isDippin }
     var generatedDot: String { _generatedDot }
@@ -97,6 +97,11 @@ final class DotDocument: ReferenceFileDocument {
             self._generatedDot = ""
             self._sourceMap = []
             self._parseError = msg
+            throw error
+        } catch {
+            self._generatedDot = ""
+            self._sourceMap = []
+            self._parseError = "\(error)"
             throw error
         }
     }
