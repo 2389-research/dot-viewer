@@ -26,6 +26,7 @@
 
     let renderGeneration = 0;
     let interactionGeneration = 0;
+    let parseGeneration = 0;
 
     onMount(async () => {
         await render(generatedDot);
@@ -50,12 +51,15 @@
     async function handleEditorChange(value: string) {
         currentSource = value;
         if (isDippin) {
+            const generation = ++parseGeneration;
             try {
                 const result = await parseDippin(value);
+                if (generation !== parseGeneration) return;
                 generatedDot = result.dotSource;
                 sourceMap = result.sourceMap;
                 parseError = '';
             } catch (e) {
+                if (generation !== parseGeneration) return;
                 parseError = e instanceof Error ? e.message : String(e);
                 error = parseError;
                 return;
@@ -103,17 +107,22 @@
         editor.setContent(content);
         if (filename.endsWith('.dip')) {
             isDippin = true;
+            const generation = ++parseGeneration;
             try {
                 const result = await parseDippin(content);
+                if (generation !== parseGeneration) return;
                 generatedDot = result.dotSource;
                 sourceMap = result.sourceMap;
                 parseError = '';
             } catch (e) {
+                if (generation !== parseGeneration) return;
                 parseError = e instanceof Error ? e.message : String(e);
                 error = parseError;
                 return;
             }
         } else {
+            // bumping the generation invalidates any in-flight dippin parse
+            ++parseGeneration;
             isDippin = false;
             generatedDot = content;
             sourceMap = [];
