@@ -39,4 +39,37 @@ final class DotDocumentDippinTests: XCTestCase {
         XCTAssertEqual(doc.generatedDot, doc.text)
         XCTAssertTrue(doc.sourceMap.isEmpty)
     }
+
+    func testOffsetTranslationIsIdentityForPlainDot() {
+        let doc = DotDocument()
+        doc.loadDot(from: "digraph G { A -> B }")
+        XCTAssertEqual(doc.dotOffsetForDippinOffset(5), 5)
+        XCTAssertEqual(doc.dippinRangeForDotOffset(5)?.lowerBound, 5)
+    }
+
+    func testOffsetTranslationMapsThroughSourceMap() throws {
+        let src = """
+        workflow F
+          start: A
+          exit: A
+          agent A
+            prompt: hi
+            model: m
+            provider: p
+        """
+        let doc = DotDocument()
+        try doc.loadDippin(from: src)
+
+        let agentOffset = src.distance(from: src.startIndex,
+                                       to: src.range(of: "agent A")!.lowerBound)
+        let dotOffset = doc.dotOffsetForDippinOffset(agentOffset)
+        XCTAssertNotNil(dotOffset)
+        let entry = doc.sourceMap[0]
+        XCTAssertTrue(Int(entry.dotStart)...Int(entry.dotEnd) ~= dotOffset!)
+
+        let midDot = (Int(entry.dotStart) + Int(entry.dotEnd)) / 2
+        let dipRange = doc.dippinRangeForDotOffset(midDot)
+        XCTAssertNotNil(dipRange)
+        XCTAssertTrue(dipRange!.contains(agentOffset))
+    }
 }

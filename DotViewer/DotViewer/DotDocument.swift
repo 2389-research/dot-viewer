@@ -133,4 +133,33 @@ final class DotDocument: ReferenceFileDocument {
             self._parseError = "\(error)"
         }
     }
+
+    /// Translate an offset in `text` (dippin space) to the corresponding offset
+    /// in `generatedDot` (DOT space). Returns identity for non-dippin docs.
+    /// Returns nil if no entry contains the offset.
+    func dotOffsetForDippinOffset(_ dipOffset: Int) -> Int? {
+        if !_isDippin { return dipOffset }
+        for entry in _sourceMap {
+            let dipStart = Int(entry.dipStart)
+            let dipEnd = Int(entry.dipEnd)
+            if dipOffset >= dipStart && dipOffset < dipEnd {
+                return Int(entry.dotStart)
+            }
+        }
+        return nil
+    }
+
+    /// Translate an offset in `generatedDot` (DOT space) to a range in `text`
+    /// (dippin space). Returns `offset..<offset` for non-dippin docs.
+    func dippinRangeForDotOffset(_ dotOffset: Int) -> Range<Int>? {
+        if !_isDippin { return dotOffset..<dotOffset }
+        for entry in _sourceMap {
+            let dotStart = Int(entry.dotStart)
+            let dotEnd = Int(entry.dotEnd)
+            if dotOffset >= dotStart && dotOffset < dotEnd {
+                return Int(entry.dipStart)..<Int(entry.dipEnd)
+            }
+        }
+        return nil
+    }
 }
