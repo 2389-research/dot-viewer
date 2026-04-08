@@ -75,27 +75,62 @@
         render(generatedDot);
     }
 
+    function dotOffsetFromDip(dipOffset: number): number | null {
+        if (!isDippin) return dipOffset;
+        for (const e of sourceMap) {
+            if (dipOffset >= e.dipStart && dipOffset < e.dipEnd) {
+                return e.dotStart;
+            }
+        }
+        return null;
+    }
+
+    function dipRangeFromDot(dotOffset: number): { start: number; end: number } | null {
+        if (!isDippin) return { start: dotOffset, end: dotOffset };
+        for (const e of sourceMap) {
+            if (dotOffset >= e.dotStart && dotOffset < e.dotEnd) {
+                return { start: e.dipStart, end: e.dipEnd };
+            }
+        }
+        return null;
+    }
+
     async function handleNodeClick(nodeId: string) {
         const generation = ++interactionGeneration;
-        const source = generatedDot;
         highlightedNode = nodeId;
-        const range = await definitionRangeForNode(source, nodeId);
-        if (generation === interactionGeneration && range) {
+        const range = await definitionRangeForNode(generatedDot, nodeId);
+        if (generation !== interactionGeneration || !range) return;
+        const dipRange = dipRangeFromDot(range.location);
+        if (!dipRange) return;
+        // Plain DOT identity yields a zero-length range; in that case fall back
+        // to the full DOT range so we still select the whole statement.
+        if (!isDippin) {
             editor.highlightRange(range.location, range.location + range.length);
+        } else {
+            editor.highlightRange(dipRange.start, dipRange.end);
         }
     }
 
     async function handleCursorChange(offset: number) {
         const generation = ++interactionGeneration;
-        // TODO(T15): translate offset via dotOffsetFromDip
-        const source = generatedDot;
-        const nodeId = await nodeIdAtOffset(source, offset);
+        const dotOffset = dotOffsetFromDip(offset);
+        if (dotOffset === null) {
+            editor.clearHighlight();
+            highlightedNode = undefined;
+            return;
+        }
+        const nodeId = await nodeIdAtOffset(generatedDot, dotOffset);
         if (generation !== interactionGeneration) return;
         highlightedNode = nodeId;
         if (nodeId) {
-            const range = await definitionRangeForNode(source, nodeId);
+            const range = await definitionRangeForNode(generatedDot, nodeId);
             if (generation === interactionGeneration && range) {
-                editor.highlightRange(range.location, range.location + range.length);
+                if (!isDippin) {
+                    editor.highlightRange(range.location, range.location + range.length);
+                } else {
+                    const dipRange = dipRangeFromDot(range.location);
+                    if (dipRange) editor.highlightRange(dipRange.start, dipRange.end);
+                }
             }
         } else {
             editor.clearHighlight();

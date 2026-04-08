@@ -27,6 +27,11 @@ check('handleFileOpen branches on .dip extension', /filename\.endsWith\(['"]\.di
 check('handleEditorChange re-parses dippin', /handleEditorChange[\s\S]*?if\s*\(isDippin\)[\s\S]*?parseDippin/.test(pageSrc));
 check('uses parseGeneration race guard', /parseGeneration/.test(pageSrc));
 check('renderer uses generatedDot not currentSource', /render\(generatedDot\)/.test(pageSrc));
+check('declares dotOffsetFromDip helper', /function\s+dotOffsetFromDip/.test(pageSrc));
+check('declares dipRangeFromDot helper', /function\s+dipRangeFromDot/.test(pageSrc));
+check('handleCursorChange uses dotOffsetFromDip', /handleCursorChange[\s\S]*?dotOffsetFromDip/.test(pageSrc));
+check('handleNodeClick uses dipRangeFromDot', /handleNodeClick[\s\S]*?dipRangeFromDot/.test(pageSrc));
+check('TODO(T15) marker removed', !/TODO\(T15\)/.test(pageSrc));
 
 console.log('wasm.ts dippin exports:');
 check('exports DippinConversion interface', /export\s+interface\s+DippinConversion/.test(wasmSrc));
