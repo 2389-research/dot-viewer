@@ -836,7 +836,7 @@ git commit -m "test(parser): round-trip parser output through dot-parser"
 **Step 1: Create fixture**
 
 `dippin-parser/testdata/stylesheet.dip`:
-```
+```text
 workflow Styled
   start: A
   exit: B
