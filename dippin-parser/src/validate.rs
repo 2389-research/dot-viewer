@@ -30,13 +30,27 @@ pub fn validate(wf: &Workflow, file: &Arc<str>) -> Vec<Diagnostic> {
         }
     };
 
-    check(&mut diags, "workflow.start", &wf.start, 1);
-    check(&mut diags, "workflow.exit", &wf.exit, 1);
+    check(
+        &mut diags,
+        "workflow.start",
+        &wf.start,
+        if wf.start_line > 0 { wf.start_line } else { 1 },
+    );
+    check(
+        &mut diags,
+        "workflow.exit",
+        &wf.exit,
+        if wf.exit_line > 0 { wf.exit_line } else { 1 },
+    );
     check(
         &mut diags,
         "workflow.defaults.restart_target",
         &wf.defaults.restart_target,
-        1,
+        if wf.defaults.restart_target_line > 0 {
+            wf.defaults.restart_target_line
+        } else {
+            1
+        },
     );
 
     for edge in &wf.edges {

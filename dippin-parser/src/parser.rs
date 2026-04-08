@@ -199,8 +199,14 @@ impl Parser {
         let val = self.read_field_value(line);
         match field_name.as_str() {
             "goal" => self.workflow.goal = val,
-            "start" => self.workflow.start = val,
-            "exit" => self.workflow.exit = val,
+            "start" => {
+                self.workflow.start = val;
+                self.workflow.start_line = line;
+            }
+            "exit" => {
+                self.workflow.exit = val;
+                self.workflow.exit_line = line;
+            }
             "version" => self.workflow.version = val,
             _ => {}
         }
@@ -351,7 +357,10 @@ impl Parser {
             "provider" => self.workflow.defaults.provider = val.to_string(),
             "retry_policy" => self.workflow.defaults.retry_policy = val.to_string(),
             "fidelity" => self.workflow.defaults.fidelity = val.to_string(),
-            "restart_target" => self.workflow.defaults.restart_target = val.to_string(),
+            "restart_target" => {
+                self.workflow.defaults.restart_target = val.to_string();
+                self.workflow.defaults.restart_target_line = loc.line;
+            }
             "compaction" => self.workflow.defaults.compaction = val.to_string(),
             "on_resume" => self.workflow.defaults.on_resume = val.to_string(),
             "max_retries" => self.workflow.defaults.max_retries = self.parse_u32(val, key, loc),

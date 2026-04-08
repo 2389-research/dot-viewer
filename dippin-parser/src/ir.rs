@@ -21,8 +21,12 @@ pub struct Workflow {
     pub goal: String,
     /// ID of the entry node (must reference a declared Node).
     pub start: String,
+    /// Source line where `start:` was declared. 0 if unknown.
+    pub start_line: usize,
     /// ID of the terminal node (must reference a declared Node).
     pub exit: String,
+    /// Source line where `exit:` was declared. 0 if unknown.
+    pub exit_line: usize,
     /// Workflow-wide defaults applied to nodes that do not override them.
     pub defaults: WorkflowDefaults,
     /// All declared nodes, in source order.
@@ -53,6 +57,8 @@ pub struct WorkflowDefaults {
     pub max_restarts: u32,
     /// Default node ID to restart from when a restart edge fires.
     pub restart_target: String,
+    /// Source line where `restart_target:` was declared. 0 if unknown.
+    pub restart_target_line: usize,
     /// Whether tool results are cached across runs by default.
     pub cache_tools: bool,
     /// Default context-compaction strategy name.

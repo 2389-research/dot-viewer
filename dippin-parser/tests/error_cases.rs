@@ -157,3 +157,46 @@ fn test_oversize_input() {
     let big = "a".repeat(dippin_parser::MAX_INPUT_SIZE + 1);
     assert!(parse(&big, "big.dip").is_err());
 }
+
+#[test]
+fn undefined_start_diagnostic_points_at_start_line() {
+    // `start: Missing` is on line 2 of the source.
+    let src = "workflow F\n  start: Missing\n  exit: A\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+    let err = parse(src, "test.dip").expect_err("expected validation failure");
+    let diag = err
+        .diagnostics()
+        .iter()
+        .find(|d| matches!(&d.kind, DiagnosticKind::UndefinedNodeReference(t) if t == "Missing"))
+        .expect("undefined-node diagnostic for `Missing`");
+    assert_eq!(
+        diag.location.line, 2,
+        "diagnostic should point at the `start:` line (2), got line {}",
+        diag.location.line
+    );
+}
+
+#[test]
+fn undefined_exit_diagnostic_points_at_exit_line() {
+    // `exit: Missing` is on line 3.
+    let src = "workflow F\n  start: A\n  exit: Missing\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+    let err = parse(src, "test.dip").expect_err("expected validation failure");
+    let diag = err
+        .diagnostics()
+        .iter()
+        .find(|d| matches!(&d.kind, DiagnosticKind::UndefinedNodeReference(t) if t == "Missing"))
+        .expect("undefined-node diagnostic for `Missing`");
+    assert_eq!(diag.location.line, 3, "should point at exit line, got {}", diag.location.line);
+}
+
+#[test]
+fn undefined_restart_target_diagnostic_points_at_defaults_field_line() {
+    // `restart_target: Missing` is on line 5.
+    let src = "workflow F\n  start: A\n  exit: A\n  defaults\n    restart_target: Missing\n  agent A\n    prompt: x\n    model: m\n    provider: p\n";
+    let err = parse(src, "test.dip").expect_err("expected validation failure");
+    let diag = err
+        .diagnostics()
+        .iter()
+        .find(|d| matches!(&d.kind, DiagnosticKind::UndefinedNodeReference(t) if t == "Missing"))
+        .expect("undefined-node diagnostic for `Missing`");
+    assert_eq!(diag.location.line, 5, "should point at restart_target line, got {}", diag.location.line);
+}
