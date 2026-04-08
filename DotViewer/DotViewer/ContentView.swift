@@ -16,7 +16,7 @@ struct ContentView: View {
     var body: some View {
         HSplitView {
             VStack(spacing: 0) {
-                EditorView(text: $document.text, cursorNodeId: $cursorNodeId, navigator: editorNavigator)
+                EditorView(text: $document.text, cursorNodeId: $cursorNodeId, navigator: editorNavigator, document: document)
                     .onChange(of: document.text) {
                         if liveMode {
                             scheduleRender()
@@ -93,7 +93,12 @@ struct ContentView: View {
     }
 
     private func performRender() {
-        let source = document.text
+        document.reparseDippinIfNeeded()
+        if let parseErr = document.parseError {
+            errorMessage = parseErr
+            return
+        }
+        let source = document.generatedDot
         let engine = selectedEngine
         Task.detached {
             do {

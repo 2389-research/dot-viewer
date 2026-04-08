@@ -112,6 +112,27 @@ final class DotDocumentDippinTests: XCTestCase {
         XCTAssertNil(doc.dippinRangeForDotOffset(999_999))
     }
 
+    func testReparseOnEditUpdatesGeneratedDot() throws {
+        let doc = DotDocument()
+        try doc.loadDippin(from: """
+        workflow F
+          start: A
+          exit: A
+          agent A
+            prompt: hi
+            model: m
+            provider: p
+        """)
+        let before = doc.generatedDot
+        doc.text = doc.text.replacingOccurrences(of: "agent A", with: "agent Foo")
+            .replacingOccurrences(of: "start: A", with: "start: Foo")
+            .replacingOccurrences(of: "exit: A", with: "exit: Foo")
+        doc.reparseDippinIfNeeded()
+        XCTAssertNotEqual(doc.generatedDot, before)
+        XCTAssertTrue(doc.generatedDot.contains("Foo"))
+        XCTAssertNil(doc.parseError)
+    }
+
     func testOffsetTranslationFindsLaterEntry() throws {
         // Two agents → two source-map entries; verify the second is reachable.
         let src = """
