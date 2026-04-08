@@ -44,8 +44,20 @@ targets:
           - "-lexpat"
           - "-lz"
           - "-lc++"
+          # Graphviz neatogen uses GTS for Delaunay triangulation when GTS is
+          # present at cmake-configure time. dot-core/build.rs auto-links these
+          # if pkg-config finds `gts`, so the Xcode link step needs to match.
+          - "-lgts"
+          - "-lglib-2.0"
+          - "-lgthread-2.0"
+          - "-lgmodule-2.0"
+          - "-lintl"
         LIBRARY_SEARCH_PATHS:
           - "$(PROJECT_DIR)/../dot-core/target/release"
+          - "/opt/homebrew/opt/gts/lib"
+          - "/opt/homebrew/opt/glib/lib"
+          - "/opt/homebrew/opt/gettext/lib"
+          - "/opt/homebrew/lib"
         SWIFT_INCLUDE_PATHS:
           - "$(PROJECT_DIR)/DotViewer/Generated/include"
         HEADER_SEARCH_PATHS:

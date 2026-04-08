@@ -537,6 +537,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/../dot-core/target/release",
+					/opt/homebrew/opt/gts/lib,
+					/opt/homebrew/opt/glib/lib,
+					/opt/homebrew/opt/gettext/lib,
+					/opt/homebrew/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
@@ -545,6 +549,11 @@
 					"-lexpat",
 					"-lz",
 					"-lc++",
+					"-lgts",
+					"-lglib-2.0",
+					"-lgthread-2.0",
+					"-lgmodule-2.0",
+					"-lintl",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.2389.dot-viewer";
 				PRODUCT_MODULE_NAME = DotViewer;
@@ -579,6 +588,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/../dot-core/target/release",
+					/opt/homebrew/opt/gts/lib,
+					/opt/homebrew/opt/glib/lib,
+					/opt/homebrew/opt/gettext/lib,
+					/opt/homebrew/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
@@ -587,6 +600,11 @@
 					"-lexpat",
 					"-lz",
 					"-lc++",
+					"-lgts",
+					"-lglib-2.0",
+					"-lgthread-2.0",
+					"-lgmodule-2.0",
+					"-lintl",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.2389.dot-viewer";
 				PRODUCT_MODULE_NAME = DotViewer;
