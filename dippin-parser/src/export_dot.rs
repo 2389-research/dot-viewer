@@ -645,8 +645,7 @@ mod tests {
   edges
     A -> H
 "#;
-        let mut opts = ExportOptions::default();
-        opts.include_prompts = true;
+        let opts = ExportOptions { include_prompts: true, ..Default::default() };
         let dot = crate::parse_to_dot_with_options(src, "t.dip", &opts).expect("parse + export");
         assert!(
             dot.contains("system_prompt=\"you are helpful\""),
