@@ -45,6 +45,30 @@ pub struct ExportOptions {
     pub execution_path: Vec<String>,
 }
 
+/// A pair of byte ranges linking a fragment of generated DOT to its original
+/// location in the Dippin source. `dot_range` indexes into the `dot_source`
+/// string returned alongside it; `dip_range` indexes into the original
+/// `.dip` source passed to the parser.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceMapEntry {
+    /// Byte range in the generated DOT output.
+    pub dot_range: std::ops::Range<usize>,
+    /// Byte range in the original dippin source.
+    pub dip_range: std::ops::Range<usize>,
+}
+
+/// DOT output plus a source map connecting fragments of the DOT back to
+/// their original location in the dippin source.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
+pub struct DippinConversion {
+    /// Rendered DOT source.
+    pub dot_source: String,
+    /// Source map entries, one per node and edge in source order.
+    pub source_map: Vec<SourceMapEntry>,
+}
+
 impl crate::ir::Workflow {
     /// Render this workflow as a DOT graph.
     pub fn to_dot(&self, opts: &ExportOptions) -> String {
@@ -70,6 +94,15 @@ pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
 
     b.push_str("}\n");
     b
+}
+
+/// Render a workflow as DOT and also produce a source map. `dippin_source`
+/// must be the same text originally passed to the parser.
+pub fn export_dot_with_map(w: &Workflow, opts: &ExportOptions, dippin_source: &str) -> DippinConversion {
+    let dot_source = export_dot(w, opts);
+    // Source map entries will be populated in later tasks.
+    let _ = dippin_source;
+    DippinConversion { dot_source, source_map: Vec::new() }
 }
 
 /// Write the digraph opening and global attributes.

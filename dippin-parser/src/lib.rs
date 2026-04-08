@@ -56,7 +56,7 @@ pub mod validate;
 
 pub use duration::Duration;
 pub use error::{Diagnostic, DiagnosticKind, Error, Result, Severity};
-pub use export_dot::{ExportOptions, RankDir};
+pub use export_dot::{export_dot_with_map, DippinConversion, ExportOptions, RankDir, SourceMapEntry};
 pub use ir::{
     AgentConfig, BranchConfig, Condition, Edge, FanInConfig, HumanConfig, Node, NodeConfig,
     NodeIO, NodeKind, ParallelConfig, RetryConfig, SourceLocation, StyleSelector, StylesheetRule,
@@ -165,6 +165,24 @@ pub fn parse_to_dot_with_options(
 ) -> Result<String> {
     let wf = parse(source, filename)?;
     Ok(wf.to_dot(opts))
+}
+
+/// Parse a Dippin source string, emit Graphviz DOT, and produce a source map
+/// linking each emitted node/edge line back to its origin in the dippin source.
+///
+/// # Errors
+///
+/// Same as [`parse`].
+pub fn parse_to_dot_with_map(
+    source: &str,
+    filename: impl AsRef<std::path::Path>,
+) -> Result<crate::export_dot::DippinConversion> {
+    let wf = parse(source, filename)?;
+    Ok(crate::export_dot::export_dot_with_map(
+        &wf,
+        &crate::export_dot::ExportOptions::default(),
+        source,
+    ))
 }
 
 #[cfg(test)]
