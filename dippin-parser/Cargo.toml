@@ -1,0 +1,33 @@
+# ABOUTME: Cargo manifest for the dippin parser and DOT exporter crate.
+# ABOUTME: Feature flags control optional serde derive macros on IR types.
+
+[package]
+name = "dippin-parser"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Parser and DOT exporter for the Dippin AI workflow DSL."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/2389-research/dot-viewer"
+documentation = "https://docs.rs/dippin-parser"
+readme = "README.md"
+keywords = ["dippin", "parser", "graphviz", "dot", "workflow"]
+categories = ["parser-implementations", "compilers"]
+
+[lints.clippy]
+all = "warn"
+# pedantic enabled selectively in Phase 5 once docs land.
+
+[features]
+default = []
+serde = ["dep:serde", "indexmap/serde"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+thiserror = "1"
+indexmap = "2"
+
+[dev-dependencies]
+serde_json = "1"
+dot-parser = { path = "../dot-parser" }
+proptest = "1"

@@ -1,0 +1,13 @@
+# This is a comment-heavy workflow
+workflow comments
+  # The goal of this workflow
+  goal: "Test comments"
+  start: A # inline comment on start
+  exit: A
+
+  # Agent node
+  agent A
+    prompt: "Do it." # inline comment on prompt
+
+  edges
+    A -> A

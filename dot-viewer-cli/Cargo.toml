@@ -14,3 +14,4 @@ path = "src/main.rs"
 dot-core = { path = "../dot-core" }
 dot-parser = { path = "../dot-parser", features = ["attributes"] }
 clap = { version = "4", features = ["derive"] }
+dippin-parser = { path = "../dippin-parser" }

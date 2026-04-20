@@ -1,0 +1,17 @@
+workflow Unicode
+  goal: "round-trip multi-byte content"
+  start: Ask
+  exit: Done
+
+  agent Ask
+    prompt: "héllo 你好 🎉"
+    model: claude-sonnet-4-6
+    provider: anthropic
+
+  agent Done
+    prompt: "résumé"
+    model: gpt-4.1-nano
+    provider: openai
+
+  edges
+    Ask -> Done

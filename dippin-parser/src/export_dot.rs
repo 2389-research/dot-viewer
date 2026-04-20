@@ -1,0 +1,864 @@
+// ABOUTME: DOT graph format exporter for Dippin workflows.
+// ABOUTME: Converts an IR Workflow into a valid DOT digraph string for Graphviz rendering.
+
+use std::collections::BTreeMap;
+use std::fmt::Write;
+
+use crate::ir::*;
+
+/// Layout direction passed to Graphviz as `rankdir`.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum RankDir {
+    #[default]
+    TopBottom,
+    LeftRight,
+    BottomTop,
+    RightLeft,
+}
+
+impl RankDir {
+    /// Return the DOT `rankdir` attribute value for this direction.
+    pub fn as_dot(&self) -> &'static str {
+        match self {
+            RankDir::TopBottom => "TB",
+            RankDir::LeftRight => "LR",
+            RankDir::BottomTop => "BT",
+            RankDir::RightLeft => "RL",
+        }
+    }
+}
+
+/// Options controlling the DOT output format.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct ExportOptions {
+    /// Include full prompt/command text as node attributes.
+    pub include_prompts: bool,
+    /// Graph layout direction. Defaults to top-to-bottom.
+    pub rank_dir: RankDir,
+    /// Apply a distinct fill color to nodes with GoalGate: true.
+    pub highlight_goal_gates: bool,
+    /// Ordered list of node IDs to highlight as an execution path.
+    pub execution_path: Vec<String>,
+}
+
+/// A half-open byte range `[start, end)`. Used by source-map entries.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ByteRange {
+    /// Inclusive start byte offset.
+    pub start: usize,
+    /// Exclusive end byte offset.
+    pub end: usize,
+}
+
+impl ByteRange {
+    /// Create a new ByteRange.
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+}
+
+impl From<std::ops::Range<usize>> for ByteRange {
+    fn from(r: std::ops::Range<usize>) -> Self {
+        Self { start: r.start, end: r.end }
+    }
+}
+
+impl From<ByteRange> for std::ops::Range<usize> {
+    fn from(r: ByteRange) -> Self {
+        r.start..r.end
+    }
+}
+
+/// A pair of byte ranges linking a fragment of generated DOT to its original
+/// location in the Dippin source. `dot_range` indexes into the `dot_source`
+/// string returned alongside it; `dip_range` indexes into the original
+/// `.dip` source passed to the parser.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SourceMapEntry {
+    /// Byte range in the generated DOT output.
+    pub dot_range: ByteRange,
+    /// Byte range in the original dippin source.
+    pub dip_range: ByteRange,
+}
+
+/// DOT output plus a source map connecting fragments of the DOT back to
+/// their original location in the dippin source.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct DippinConversion {
+    /// Rendered DOT source.
+    pub dot_source: String,
+    /// Source map entries, one per node and edge in source order.
+    pub source_map: Vec<SourceMapEntry>,
+}
+
+impl crate::ir::Workflow {
+    /// Render this workflow as a DOT graph.
+    pub fn to_dot(&self, opts: &ExportOptions) -> String {
+        export_dot(self, opts)
+    }
+}
+
+/// Render a workflow as a DOT language string.
+pub fn export_dot(w: &Workflow, opts: &ExportOptions) -> String {
+    let mut b = String::new();
+    write_dot_body(&mut b, w, opts, |_, _, _| {}, |_, _, _| {});
+    b
+}
+
+/// Write the full DOT body for `w` into `b`. Invokes `on_node` after each
+/// node statement and `on_edge` after each edge statement with
+/// `(index, dot_start, dot_end)` so callers that build a source map can
+/// capture DOT byte offsets without duplicating the output structure.
+fn write_dot_body(
+    b: &mut String,
+    w: &Workflow,
+    opts: &ExportOptions,
+    mut on_node: impl FnMut(usize, usize, usize),
+    mut on_edge: impl FnMut(usize, usize, usize),
+) {
+    write_dot_header(b, w, opts);
+
+    for (i, n) in w.nodes.iter().enumerate() {
+        let dot_start = b.len();
+        write_node_dot(b, n, w, opts);
+        let dot_end = b.len();
+        on_node(i, dot_start, dot_end);
+    }
+
+    b.push('\n');
+
+    for (i, e) in w.edges.iter().enumerate() {
+        let dot_start = b.len();
+        write_edge_dot(b, e);
+        let dot_end = b.len();
+        on_edge(i, dot_start, dot_end);
+    }
+
+    b.push_str("}\n");
+}
+
+/// Return a vector where element `i` is the byte offset of line `i+1` (1-based)
+/// in `source`. Always contains at least one element (offset 0 for line 1).
+fn compute_line_offsets(source: &str) -> Vec<usize> {
+    let mut offsets = vec![0usize];
+    let bytes = source.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\r' if bytes.get(i + 1) == Some(&b'\n') => {
+                offsets.push(i + 2);
+                i += 2;
+            }
+            b'\r' | b'\n' => {
+                offsets.push(i + 1);
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    offsets
+}
+
+/// Render a workflow as DOT and also produce a source map. `dippin_source`
+/// must be the same text originally passed to the parser.
+pub fn export_dot_with_map(w: &Workflow, opts: &ExportOptions, dippin_source: &str) -> DippinConversion {
+    let line_offsets = compute_line_offsets(dippin_source);
+    let total_len = dippin_source.len();
+    let line_start = |line: usize| -> usize {
+        if line == 0 || line > line_offsets.len() {
+            return total_len;
+        }
+        line_offsets[line - 1]
+    };
+
+    // Build a sorted list of construct start-lines (nodes + edges) plus a
+    // sentinel. The dippin range of each construct is
+    // [its line_start .. next boundary's line_start).
+    let mut boundaries: Vec<usize> = Vec::new();
+    for n in &w.nodes {
+        boundaries.push(n.source.line);
+    }
+    for e in &w.edges {
+        boundaries.push(e.source.line);
+    }
+    boundaries.sort_unstable();
+    boundaries.push(usize::MAX);
+
+    // binary search via partition_point since `boundaries` is sorted
+    let next_boundary_after = |line: usize| -> usize {
+        let idx = boundaries.partition_point(|&b| b <= line);
+        let b = boundaries[idx]; // safe: MAX sentinel guarantees idx < len
+        if b == usize::MAX { total_len } else { line_start(b) }
+    };
+
+    let mut dot_source = String::new();
+
+    // Collect DOT byte ranges for nodes and edges during the single-pass
+    // write, then compute dippin ranges afterwards. Two-phase to sidestep
+    // the two-mutable-borrow issue of passing two FnMut closures that both
+    // want to push into the same Vec.
+    let mut node_rows: Vec<(usize, usize, usize)> = Vec::with_capacity(w.nodes.len());
+    let mut edge_rows: Vec<(usize, usize, usize)> = Vec::with_capacity(w.edges.len());
+    write_dot_body(
+        &mut dot_source,
+        w,
+        opts,
+        |i, s, e| node_rows.push((i, s, e)),
+        |i, s, e| edge_rows.push((i, s, e)),
+    );
+
+    let mut source_map: Vec<SourceMapEntry> =
+        Vec::with_capacity(w.nodes.len() + w.edges.len());
+    for (i, dot_start, dot_end) in node_rows {
+        let n = &w.nodes[i];
+        let dip_start = line_start(n.source.line);
+        let dip_end = next_boundary_after(n.source.line);
+        source_map.push(SourceMapEntry {
+            dot_range: ByteRange::new(dot_start, dot_end),
+            dip_range: ByteRange::new(dip_start, dip_end),
+        });
+    }
+    for (i, dot_start, dot_end) in edge_rows {
+        let e = &w.edges[i];
+        let dip_start = line_start(e.source.line);
+        let dip_end = next_boundary_after(e.source.line);
+        source_map.push(SourceMapEntry {
+            dot_range: ByteRange::new(dot_start, dot_end),
+            dip_range: ByteRange::new(dip_start, dip_end),
+        });
+    }
+
+    DippinConversion { dot_source, source_map }
+}
+
+/// Write the digraph opening and global attributes.
+fn write_dot_header(b: &mut String, w: &Workflow, opts: &ExportOptions) {
+    let rank_dir = opts.rank_dir.as_dot();
+    let graph_name = if w.name.is_empty() {
+        "workflow"
+    } else {
+        &w.name
+    };
+    let _ = writeln!(b, "digraph {} {{", dot_id(graph_name));
+    let _ = writeln!(b, "  rankdir={};", rank_dir);
+    b.push_str("  node [fontname=\"Helvetica\"];\n");
+    b.push_str("  edge [fontname=\"Helvetica\"];\n");
+}
+
+/// Map each [`NodeKind`] to a Graphviz shape. The mapping mirrors the Go reference
+/// in `dippin-lang/export/dot.go`. Start nodes override to `Mdiamond` and exit
+/// nodes to `Msquare` regardless of their underlying kind.
+fn node_shape(kind: &NodeKind) -> &'static str {
+    match kind {
+        NodeKind::Agent => "box",
+        NodeKind::Human => "hexagon",
+        NodeKind::Tool => "parallelogram",
+        NodeKind::Parallel => "component",
+        NodeKind::FanIn => "tripleoctagon",
+        NodeKind::Subgraph => "tab",
+    }
+}
+
+/// Resolve the DOT shape for a node, with start/exit overrides.
+fn resolve_node_shape(n: &Node, w: &Workflow) -> &'static str {
+    if n.id == w.start {
+        return "Mdiamond";
+    }
+    if n.id == w.exit {
+        return "Msquare";
+    }
+    node_shape(&n.kind)
+}
+
+/// Write a single DOT node statement.
+fn write_node_dot(b: &mut String, n: &Node, w: &Workflow, opts: &ExportOptions) {
+    let mut attrs = BTreeMap::new();
+    attrs.insert("shape".to_string(), resolve_node_shape(n, w).to_string());
+
+    let base_label = if n.label.is_empty() {
+        n.id.clone()
+    } else {
+        n.label.clone()
+    };
+    let label = if let Some(idx) = opts
+        .execution_path
+        .iter()
+        .position(|p| p == &n.id)
+    {
+        format!("[{}] {}", idx + 1, base_label)
+    } else {
+        base_label
+    };
+    attrs.insert("label".to_string(), label);
+
+    if opts.execution_path.iter().any(|p| p == &n.id) {
+        attrs.insert("style".to_string(), "bold,filled".to_string());
+        attrs.insert("fillcolor".to_string(), "#e0f0ff".to_string());
+    }
+
+    if opts.highlight_goal_gates {
+        if let NodeConfig::Agent(cfg) = &n.config {
+            if cfg.goal_gate {
+                attrs.insert("style".to_string(), "filled".to_string());
+                attrs.insert("fillcolor".to_string(), "#ffcccc".to_string());
+            }
+        }
+    }
+
+    if opts.include_prompts {
+        apply_config_attrs(&mut attrs, &n.config);
+    }
+
+    apply_stylesheet(&mut attrs, n, w);
+
+    let _ = writeln!(b, "  {} {};", dot_id(&n.id), format_dot_attrs(&attrs));
+}
+
+/// Merge any stylesheet rules that match `n` into `attrs`.
+///
+/// Application order is Universal -> Kind -> Class -> Id. Within the same
+/// specificity bucket, rules are applied in source order (later rules
+/// overwrite earlier ones for the same property). This mirrors the upstream
+/// Go exporter's behavior and intentionally allows stylesheet rules to
+/// override built-in attribute derivations like `shape`.
+fn apply_stylesheet(attrs: &mut BTreeMap<String, String>, n: &Node, w: &Workflow) {
+    let buckets: [fn(&StyleSelector, &Node) -> bool; 4] = [
+        |s, _| matches!(s, StyleSelector::Universal),
+        |s, n| matches!(s, StyleSelector::Kind(k) if k == &n.kind.to_string()),
+        |s, n| matches!(s, StyleSelector::Class(c) if n.classes.iter().any(|nc| nc == c)),
+        |s, n| matches!(s, StyleSelector::Id(id) if id == &n.id),
+    ];
+    for matches_bucket in buckets {
+        for rule in &w.stylesheet {
+            if matches_bucket(&rule.selector, n) {
+                for (k, v) in &rule.properties {
+                    attrs.insert(k.clone(), v.clone());
+                }
+            }
+        }
+    }
+}
+
+/// Add config-specific attributes to a node's attribute map.
+fn apply_config_attrs(attrs: &mut BTreeMap<String, String>, cfg: &NodeConfig) {
+    match cfg {
+        NodeConfig::Agent(c) => {
+            if !c.prompt.is_empty() {
+                attrs.insert("prompt".to_string(), c.prompt.clone());
+            }
+            if !c.system_prompt.is_empty() {
+                attrs.insert("system_prompt".to_string(), c.system_prompt.clone());
+            }
+            if !c.model.is_empty() {
+                attrs.insert("model".to_string(), c.model.clone());
+            }
+            if !c.provider.is_empty() {
+                attrs.insert("provider".to_string(), c.provider.clone());
+            }
+        }
+        NodeConfig::Tool(c) => {
+            if !c.command.is_empty() {
+                attrs.insert("tool_command".to_string(), c.command.clone());
+            }
+            if !c.timeout.is_zero() {
+                attrs.insert("timeout".to_string(), c.timeout.to_string());
+            }
+        }
+        NodeConfig::Human(c) => {
+            if !c.mode.is_empty() {
+                attrs.insert("mode".to_string(), c.mode.clone());
+            }
+            if !c.default.is_empty() {
+                attrs.insert("default".to_string(), c.default.clone());
+            }
+            if !c.prompt.is_empty() {
+                attrs.insert("prompt".to_string(), c.prompt.clone());
+            }
+        }
+        NodeConfig::Subgraph(c) => {
+            if !c.ref_path.is_empty() {
+                attrs.insert("ref".to_string(), c.ref_path.clone());
+            }
+        }
+        NodeConfig::Parallel(c) => {
+            if !c.targets.is_empty() {
+                attrs.insert("targets".to_string(), c.targets.join(","));
+            }
+        }
+        NodeConfig::FanIn(c) => {
+            if !c.sources.is_empty() {
+                attrs.insert("sources".to_string(), c.sources.join(","));
+            }
+        }
+    }
+}
+
+/// Write a single DOT edge statement.
+fn write_edge_dot(b: &mut String, e: &Edge) {
+    let mut attrs = BTreeMap::new();
+
+    if !e.label.is_empty() {
+        attrs.insert("label".to_string(), e.label.clone());
+    }
+
+    if let Some(cond) = &e.condition {
+        let cond_str = cond.raw.clone();
+        if !cond_str.is_empty() {
+            let cond_str = lower_condition_namespaces(&cond_str);
+            if e.label.is_empty() {
+                attrs.insert("label".to_string(), cond_str.clone());
+            }
+            attrs.insert("condition".to_string(), cond_str);
+        }
+    }
+
+    if e.weight != 0 {
+        attrs.insert("weight".to_string(), e.weight.to_string());
+    }
+    if e.restart {
+        attrs.insert("restart".to_string(), "true".to_string());
+        attrs.insert("style".to_string(), "dashed".to_string());
+    }
+
+    let _ = write!(b, "  {} -> {}", dot_id(&e.from), dot_id(&e.to));
+    if !attrs.is_empty() {
+        let _ = write!(b, " {}", format_dot_attrs(&attrs));
+    }
+    b.push_str(";\n");
+}
+
+/// Format a BTreeMap of DOT attributes as a bracketed list.
+fn format_dot_attrs(attrs: &BTreeMap<String, String>) -> String {
+    if attrs.is_empty() {
+        return String::new();
+    }
+    let parts: Vec<String> = attrs
+        .iter()
+        .map(|(k, v)| format!("{}={}", k, dot_quote(v)))
+        .collect();
+    format!("[{}]", parts.join(", "))
+}
+
+/// Format a string as a valid DOT identifier.
+fn dot_id(s: &str) -> String {
+    if s.is_empty() {
+        return "\"\"".to_string();
+    }
+    if is_simple_dot_id(s) {
+        return s.to_string();
+    }
+    dot_quote(s)
+}
+
+/// Check if a string is a valid unquoted DOT identifier.
+// Go parity: dippin-lang's parser does not quote DOT keyword identifiers.
+fn is_simple_dot_id(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    let bytes = s.as_bytes();
+    if bytes[0].is_ascii_digit() {
+        return false;
+    }
+    s.chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+}
+
+/// Wrap a string in double quotes, escaping internal quotes, backslashes,
+/// and control characters so the result is always a valid DOT quoted string.
+fn dot_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// Strip the ctx. prefix from condition variables for DOT output.
+fn lower_condition_namespaces(cond: &str) -> String {
+    cond.replace("ctx.", "")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dot_id_simple() {
+        assert_eq!(dot_id("hello"), "hello");
+        assert_eq!(dot_id("Hello_World"), "Hello_World");
+        assert_eq!(dot_id(""), "\"\"");
+    }
+
+    #[test]
+    fn test_dot_id_needs_quoting() {
+        assert_eq!(dot_id("hello world"), "\"hello world\"");
+        assert_eq!(dot_id("hello-world"), "\"hello-world\"");
+        assert_eq!(dot_id("123abc"), "\"123abc\"");
+    }
+
+    #[test]
+    fn test_dot_quote() {
+        assert_eq!(dot_quote("hello"), "\"hello\"");
+        assert_eq!(dot_quote("he\"llo"), "\"he\\\"llo\"");
+    }
+
+    #[test]
+    fn test_dot_quote_escapes_all_backslashes() {
+        // Inputs with literal backslashes must produce \\, not be passed through
+        assert_eq!(dot_quote(r"path\to\file"), r#""path\\to\\file""#);
+        // Embedded quote must be escaped
+        assert_eq!(dot_quote(r#"a"b"#), r#""a\"b""#);
+        // Real newline must be escaped
+        assert_eq!(dot_quote("line1\nline2"), r#""line1\nline2""#);
+    }
+
+    #[test]
+    fn test_lower_condition_namespaces() {
+        assert_eq!(
+            lower_condition_namespaces("ctx.outcome = success"),
+            "outcome = success"
+        );
+    }
+
+    #[test]
+    fn test_export_minimal_workflow() {
+        let wf = Workflow {
+            name: "Test".to_string(),
+            start: "A".to_string(),
+            exit: "B".to_string(),
+            nodes: vec![
+                Node {
+                    id: "A".to_string(),
+                    kind: NodeKind::Agent,
+                    label: "Start".to_string(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Agent(AgentConfig::default()),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+                Node {
+                    id: "B".to_string(),
+                    kind: NodeKind::Agent,
+                    label: "End".to_string(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Agent(AgentConfig::default()),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+            ],
+            edges: vec![Edge {
+                from: "A".to_string(),
+                to: "B".to_string(),
+                label: String::new(),
+                condition: None,
+                weight: 0,
+                restart: false,
+                source: SourceLocation::default(),
+            }],
+            ..Default::default()
+        };
+
+        let dot = export_dot(&wf, &ExportOptions::default());
+        assert!(dot.contains("digraph Test {"));
+        assert!(dot.contains("rankdir=TB;"));
+        assert!(dot.contains("A [label=\"Start\", shape=\"Mdiamond\"]"));
+        assert!(dot.contains("B [label=\"End\", shape=\"Msquare\"]"));
+        assert!(dot.contains("A -> B;"));
+    }
+
+    #[test]
+    fn test_export_edge_with_condition() {
+        let wf = Workflow {
+            name: "Test".to_string(),
+            start: "A".to_string(),
+            exit: "B".to_string(),
+            nodes: vec![
+                Node {
+                    id: "A".to_string(),
+                    kind: NodeKind::Agent,
+                    label: String::new(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Agent(AgentConfig::default()),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+                Node {
+                    id: "B".to_string(),
+                    kind: NodeKind::Agent,
+                    label: String::new(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Agent(AgentConfig::default()),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+            ],
+            edges: vec![Edge {
+                from: "A".to_string(),
+                to: "B".to_string(),
+                label: "pass".to_string(),
+                condition: Some(Condition {
+                    raw: "ctx.outcome = success".to_string(),
+                }),
+                weight: 0,
+                restart: false,
+                source: SourceLocation::default(),
+            }],
+            ..Default::default()
+        };
+
+        let dot = export_dot(&wf, &ExportOptions::default());
+        assert!(dot.contains("condition="));
+        assert!(dot.contains("outcome = success"));
+        assert!(dot.contains("label=\"pass\""));
+    }
+
+    #[test]
+    fn test_export_node_shapes() {
+        assert_eq!(node_shape(&NodeKind::Agent), "box");
+        assert_eq!(node_shape(&NodeKind::Human), "hexagon");
+        assert_eq!(node_shape(&NodeKind::Tool), "parallelogram");
+        assert_eq!(node_shape(&NodeKind::Parallel), "component");
+        assert_eq!(node_shape(&NodeKind::FanIn), "tripleoctagon");
+        assert_eq!(node_shape(&NodeKind::Subgraph), "tab");
+    }
+
+    #[test]
+    fn test_dot_id_does_not_quote_dot_keywords() {
+        // Go reference does not quote `node`, `edge`, etc.
+        assert_eq!(dot_id("node"), "node");
+        assert_eq!(dot_id("edge"), "edge");
+        assert_eq!(dot_id("subgraph"), "subgraph");
+    }
+
+    #[test]
+    fn test_export_with_execution_path() {
+        let src = "workflow F\n  start: A\n  exit: B\n  agent A\n    prompt: x\n    model: m\n    provider: p\n  agent B\n    prompt: y\n    model: m\n    provider: p\n  edges\n    A -> B\n";
+        let opts = ExportOptions {
+            execution_path: vec!["A".into(), "B".into()],
+            ..Default::default()
+        };
+        let dot = crate::parse_to_dot_with_options(src, "t.dip", &opts).unwrap();
+        assert!(dot.contains("[1]"), "expected [1] in: {}", dot);
+        assert!(dot.contains("[2]"), "expected [2] in: {}", dot);
+        assert!(dot.contains("fillcolor"));
+    }
+
+    #[test]
+    fn test_export_escapes_user_values() {
+        // Every user-provided value context must route through dot_quote,
+        // which escapes backslash, double-quote, and newline.
+        let wf = Workflow {
+            name: "Esc".to_string(),
+            start: "A".to_string(),
+            exit: "B".to_string(),
+            nodes: vec![
+                Node {
+                    id: "A".to_string(),
+                    kind: NodeKind::Agent,
+                    label: "lbl\"with\\slash".to_string(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Agent(AgentConfig {
+                        prompt: "line1\nline2\\x".to_string(),
+                        model: "m\"q".to_string(),
+                        provider: "p\\v".to_string(),
+                        ..Default::default()
+                    }),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+                Node {
+                    id: "B".to_string(),
+                    kind: NodeKind::Tool,
+                    label: String::new(),
+                    classes: Vec::new(),
+                    config: NodeConfig::Tool(ToolConfig {
+                        command: "echo \"hi\"\nbye".to_string(),
+                        ..Default::default()
+                    }),
+                    retry: RetryConfig::default(),
+                    io: NodeIO::default(),
+                    source: SourceLocation::default(),
+                },
+            ],
+            edges: Vec::new(),
+            ..Default::default()
+        };
+        let opts = ExportOptions {
+            include_prompts: true,
+            ..Default::default()
+        };
+        let dot = export_dot(&wf, &opts);
+        // label: quotes escaped and backslash doubled
+        assert!(
+            dot.contains(r#"label="lbl\"with\\slash""#),
+            "label not escaped: {}",
+            dot
+        );
+        // prompt: newline -> \n, backslash doubled
+        assert!(
+            dot.contains(r#"prompt="line1\nline2\\x""#),
+            "prompt not escaped: {}",
+            dot
+        );
+        // model: quote escaped
+        assert!(dot.contains(r#"model="m\"q""#), "model not escaped: {}", dot);
+        // provider: backslash doubled
+        assert!(
+            dot.contains(r#"provider="p\\v""#),
+            "provider not escaped: {}",
+            dot
+        );
+        // tool_command: newline and quotes escaped
+        assert!(
+            dot.contains(r#"tool_command="echo \"hi\"\nbye""#),
+            "tool_command not escaped: {}",
+            dot
+        );
+    }
+
+    #[test]
+    fn test_export_restart_edge() {
+        let wf = Workflow {
+            name: "Test".to_string(),
+            nodes: Vec::new(),
+            edges: vec![Edge {
+                from: "A".to_string(),
+                to: "B".to_string(),
+                label: String::new(),
+                condition: None,
+                weight: 0,
+                restart: true,
+                source: SourceLocation::default(),
+            }],
+            ..Default::default()
+        };
+
+        let dot = export_dot(&wf, &ExportOptions::default());
+        assert!(dot.contains("restart=\"true\""));
+        assert!(dot.contains("style=\"dashed\""));
+    }
+
+    #[test]
+    fn stylesheet_rules_apply_to_exported_nodes() {
+        let src = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/testdata/stylesheet.dip"
+        ))
+        .expect("fixture readable");
+        let dot = crate::parse_to_dot(&src, "stylesheet.dip").expect("parse + export");
+
+        // Universal: every node should have fontname="Helvetica" applied as
+        // a per-node attr (in addition to the graph-level node defaults).
+        assert!(
+            dot.matches(r#"fontname="Helvetica""#).count() >= 4,
+            "universal rule should apply to all nodes, got:\n{}",
+            dot
+        );
+        // Kind(agent): agent nodes should have fillcolor="lightblue"
+        assert!(
+            dot.contains(r#"fillcolor="lightblue""#),
+            "kind selector `agent` should apply, got:\n{}",
+            dot
+        );
+        // Id(A): node A should have shape="box" (overriding the default
+        // start-node shape Mdiamond).
+        let a_line = dot
+            .lines()
+            .find(|l| l.trim_start().starts_with("A "))
+            .expect("node A should appear in DOT");
+        assert!(
+            a_line.contains(r#"shape="box""#),
+            "id selector #A should apply shape=box, got line: {}",
+            a_line
+        );
+    }
+
+    #[test]
+    fn include_prompts_emits_agent_system_prompt_and_human_prompt() {
+        let src = r#"workflow F
+  start: A
+  exit: H
+  agent A
+    prompt: do work
+    system_prompt: you are helpful
+    model: m
+    provider: p
+  human H
+    mode: freeform
+    prompt: what now
+  edges
+    A -> H
+"#;
+        let opts = ExportOptions { include_prompts: true, ..Default::default() };
+        let dot = crate::parse_to_dot_with_options(src, "t.dip", &opts).expect("parse + export");
+        assert!(
+            dot.contains("system_prompt=\"you are helpful\""),
+            "agent system_prompt should appear with include_prompts=true, got:\n{}",
+            dot
+        );
+        assert!(
+            dot.contains("prompt=\"what now\""),
+            "human prompt should appear with include_prompts=true, got:\n{}",
+            dot
+        );
+    }
+
+    #[cfg(test)]
+    mod source_map_tests {
+        use super::super::*;
+
+        #[test]
+        fn line_offsets_table() {
+            let src = "abc\ndef\n\nghi";
+            let offsets = compute_line_offsets(src);
+            // Line 1 starts at 0, line 2 at 4, line 3 at 8, line 4 at 9 (after empty line).
+            assert_eq!(offsets, vec![0, 4, 8, 9]);
+        }
+
+        #[test]
+        fn line_offsets_empty_source() {
+            assert_eq!(compute_line_offsets(""), vec![0]);
+        }
+
+        #[test]
+        fn line_offsets_no_trailing_newline() {
+            // "abc\ndef" → line 1 @ 0, line 2 @ 4.
+            assert_eq!(compute_line_offsets("abc\ndef"), vec![0, 4]);
+        }
+
+        #[test]
+        fn compute_line_offsets_handles_crlf() {
+            assert_eq!(compute_line_offsets("abc\r\ndef\r\n"), vec![0, 5, 10]);
+        }
+
+        #[test]
+        fn compute_line_offsets_handles_lone_cr() {
+            assert_eq!(compute_line_offsets("abc\rdef"), vec![0, 4]);
+        }
+    }
+}

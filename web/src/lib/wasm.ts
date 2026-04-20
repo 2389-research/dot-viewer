@@ -162,3 +162,26 @@ export async function nodeIdAtOffset(
 	const stmtObj = stmt as DotStatement;
 	return parserModule.nodeIdAt(source, stmtObj.source_range.location, offset);
 }
+
+// --- Dippin parser ---
+
+export interface DippinSourceMapEntry {
+	dotStart: number;
+	dotEnd: number;
+	dipStart: number;
+	dipEnd: number;
+}
+
+export interface DippinConversion {
+	dotSource: string;
+	sourceMap: DippinSourceMapEntry[];
+}
+
+/**
+ * Parse a dippin workflow source into DOT plus a source map for
+ * bidirectional editor↔preview linking.
+ */
+export async function parseDippin(source: string): Promise<DippinConversion> {
+	await ensureInit();
+	return parserModule.parseDippin(source) as DippinConversion;
+}

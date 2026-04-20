@@ -1,0 +1,21 @@
+workflow EdgeAttributes
+  goal: "Test edge weight, label, restart attributes"
+  start: A
+  exit: D
+
+  agent A
+    prompt: "Do A."
+
+  agent B
+    prompt: "Do B."
+
+  agent C
+    prompt: "Do C."
+
+  agent D
+    prompt: "Do D."
+
+  edges
+    A -> B when ctx.status == "ok" label: approved weight: 5
+    B -> C restart: true
+    C -> D label: final

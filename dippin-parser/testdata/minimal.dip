@@ -1,0 +1,12 @@
+workflow minimal
+  start: Begin
+  exit: End
+
+  human Begin
+    mode: freeform
+
+  agent End
+    prompt: Done.
+
+  edges
+    Begin -> End

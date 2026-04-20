@@ -1,0 +1,16 @@
+workflow Minimal
+  goal: "Updated test workflow"
+  start: Ask
+  exit: Done
+
+  human Ask
+    mode: freeform
+
+  agent Done
+    model: claude-sonnet-4-6
+    provider: anthropic
+    prompt:
+      Complete the updated task.
+
+  edges
+    Ask -> Done

@@ -1,0 +1,59 @@
+workflow ResponseFormatTest
+  goal: "Test structured output parsing"
+  start: Start
+  exit: Exit
+
+  agent Start
+    label: Start
+
+  agent Exit
+    label: Exit
+
+  agent JsonAgent
+    label: "JSON Output"
+    model: claude-sonnet-4-6
+    provider: anthropic
+    response_format: json_object
+    prompt:
+      Output a JSON object with results.
+
+  agent SchemaAgent
+    label: "Schema Output"
+    model: gpt-5.4
+    provider: openai
+    response_format: json_schema
+    response_schema:
+      {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {"type": "string"}
+              },
+              "required": ["text"]
+            }
+          }
+        },
+        "required": ["questions"]
+      }
+    prompt:
+      Generate interview questions.
+
+  agent ParamsAgent
+    label: "Agent with Params"
+    model: claude-sonnet-4-6
+    provider: anthropic
+    params:
+      backend: claude-code
+      permission_mode: auto
+    prompt:
+      Do something.
+
+  edges
+    Start -> JsonAgent
+    JsonAgent -> SchemaAgent
+    SchemaAgent -> ParamsAgent
+    ParamsAgent -> Exit

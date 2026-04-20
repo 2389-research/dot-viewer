@@ -1,0 +1,28 @@
+workflow ParallelBranches
+  goal: "Test parallel block form with branch fields"
+  start: split
+  exit: join
+
+  agent fast
+    prompt: "Fast worker."
+
+  agent accurate
+    prompt: "Accurate worker."
+
+  parallel split
+    branch: fast
+      model: claude-haiku-4-5
+      provider: anthropic
+      fidelity: summary
+    branch: accurate
+      model: claude-opus-4-6
+      provider: anthropic
+      fidelity: full
+
+  fan_in join <- fast, accurate
+
+  edges
+    split -> fast
+    split -> accurate
+    fast -> join
+    accurate -> join

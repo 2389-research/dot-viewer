@@ -1,0 +1,13 @@
+workflow Hello
+  start: A
+  exit: B
+  agent A
+    prompt: hi
+    model: m
+    provider: p
+  agent B
+    prompt: bye
+    model: m
+    provider: p
+  edges
+    A -> B

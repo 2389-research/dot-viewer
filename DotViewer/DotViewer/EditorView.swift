@@ -20,6 +20,7 @@ struct EditorView: NSViewRepresentable {
     @Binding var text: String
     @Binding var cursorNodeId: String?
     let navigator: EditorNavigator
+    @ObservedObject var document: DotDocument
 
     func makeNSView(context: Context) -> NSView {
         let container = NSView()
@@ -42,7 +43,7 @@ struct EditorView: NSViewRepresentable {
 
         // Set delegate after text to avoid callbacks during setup
         textView.delegate = context.coordinator
-        context.coordinator.dotGraph = DotParser.parse(text)
+        context.coordinator.dotGraph = DotParser.parse(document.generatedDot)
         context.coordinator.applyHighlighting(to: textView)
 
         // Wire up the navigator for direct calls from ContentView
@@ -83,19 +84,20 @@ struct EditorView: NSViewRepresentable {
               let textView = scrollView.documentView as? NSTextView else { return }
         if textView.string != text {
             textView.string = text
-            context.coordinator.dotGraph = DotParser.parse(text)
+            context.coordinator.dotGraph = DotParser.parse(document.generatedDot)
             context.coordinator.applyHighlighting(to: textView)
         }
         // Navigation is handled directly via EditorNavigator, not through bindings.
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, cursorNodeId: $cursorNodeId)
+        Coordinator(text: $text, cursorNodeId: $cursorNodeId, document: document)
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
         var cursorNodeId: Binding<String?>
+        let document: DotDocument
         private var isNavigating = false
         private var isAutoClosing = false
         private var isProcessingSelectionChange = false
@@ -108,9 +110,10 @@ struct EditorView: NSViewRepresentable {
             "digraph", "graph", "subgraph", "node", "edge", "strict"
         ]
 
-        init(text: Binding<String>, cursorNodeId: Binding<String?>) {
+        init(text: Binding<String>, cursorNodeId: Binding<String?>, document: DotDocument) {
             self.text = text
             self.cursorNodeId = cursorNodeId
+            self.document = document
         }
 
         func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
@@ -133,7 +136,8 @@ struct EditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
-            dotGraph = DotParser.parse(textView.string)
+            document.reparseDippinIfNeeded()
+            dotGraph = DotParser.parse(document.generatedDot)
             applyHighlighting(to: textView)
 
             // Update gutter width if line count changed digit count
@@ -329,9 +333,10 @@ struct EditorView: NSViewRepresentable {
 
         private func findNodeAtCursor(in textView: NSTextView) -> String? {
             guard let graph = dotGraph else { return nil }
-            let pos = textView.selectedRange().location
-            guard let stmt = graph.statementAt(offset: pos) else { return nil }
-            return stmt.nodeIdAt(offset: pos)
+            let dipPos = textView.selectedRange().location
+            guard let dotPos = document.dotOffsetForDippinOffset(dipPos) else { return nil }
+            guard let stmt = graph.statementAt(offset: dotPos) else { return nil }
+            return stmt.nodeIdAt(offset: dotPos)
         }
 
         // MARK: - Navigate to Node
@@ -343,10 +348,23 @@ struct EditorView: NSViewRepresentable {
             guard let graph = dotGraph,
                   let stmt = graph.definitionForNode(nodeId) else { return }
 
-            let range = stmt.sourceRange
-            guard range.location + range.length <= (textView.string as NSString).length else { return }
-            textView.setSelectedRange(range)
-            textView.scrollRangeToVisible(range)
+            let dotRange = stmt.sourceRange
+            let nsRange: NSRange
+            if !document.isDippin {
+                // Plain DOT: editor buffer == DOT, select the full statement directly.
+                nsRange = dotRange
+            } else {
+                // Dippin: translate the DOT range endpoints into dippin space.
+                guard let dipStart = document.dippinRangeForDotOffset(dotRange.location)?.lowerBound else { return }
+                let dotEnd = dotRange.location + dotRange.length
+                let probe = max(dotEnd - 1, dotRange.location)
+                let dipEnd = document.dippinRangeForDotOffset(probe)?.upperBound ?? dipStart
+                nsRange = NSRange(location: dipStart, length: max(0, dipEnd - dipStart))
+            }
+            let textNSLength = (textView.string as NSString).length
+            guard nsRange.location + nsRange.length <= textNSLength else { return }
+            textView.setSelectedRange(nsRange)
+            textView.scrollRangeToVisible(nsRange)
         }
     }
 }

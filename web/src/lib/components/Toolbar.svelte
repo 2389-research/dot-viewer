@@ -12,7 +12,7 @@
         engine?: string;
         wrap?: boolean;
         onenginechange?: (engine: string) => void;
-        onfileopen?: (content: string) => void;
+        onfileopen?: (content: string, filename: string) => void;
         onwrapchange?: (wrap: boolean) => void;
     } = $props();
 
@@ -34,7 +34,7 @@
         const file = target.files?.[0];
         if (!file) return;
         const content = await file.text();
-        onfileopen?.(content);
+        onfileopen?.(content, file.name);
         // Reset so the same file can be re-opened
         target.value = '';
     }
@@ -45,7 +45,7 @@
     <input
         bind:this={fileInput}
         type="file"
-        accept=".dot,.gv,.txt"
+        accept=".dot,.gv,.txt,.dip"
         onchange={handleFileSelected}
         hidden
     />

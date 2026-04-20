@@ -1,0 +1,19 @@
+workflow DefaultsComplex
+  goal: "Test defaults with complex fields"
+  start: A
+  exit: A
+
+  defaults
+    model: claude-sonnet-4-6
+    provider: anthropic
+    max_retries: 3
+    max_restarts: 10
+    cache_tools: true
+    retry_policy: standard
+    restart_target: A
+
+  agent A
+    prompt: "Do it."
+
+  edges
+    A -> A

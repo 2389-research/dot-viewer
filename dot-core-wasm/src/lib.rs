@@ -55,3 +55,56 @@ pub fn definition_range_for_node_wasm(source: &str, node_id: &str) -> Option<Vec
     let range = dot_parser::definition_range_for_node(&graph, node_id)?;
     Some(vec![range.location, range.length])
 }
+
+#[derive(serde::Serialize)]
+struct JsDippinConversion {
+    #[serde(rename = "dotSource")]
+    dot_source: String,
+    #[serde(rename = "sourceMap")]
+    source_map: Vec<JsSourceMapEntry>,
+}
+
+#[derive(serde::Serialize)]
+struct JsSourceMapEntry {
+    #[serde(rename = "dotStart")]
+    dot_start: u32,
+    #[serde(rename = "dotEnd")]
+    dot_end: u32,
+    #[serde(rename = "dipStart")]
+    dip_start: u32,
+    #[serde(rename = "dipEnd")]
+    dip_end: u32,
+}
+
+/// Parse a dippin source string and return `{ dotSource, sourceMap }`.
+/// On parse failure, rejects with a formatted `file:line:col: message` string.
+#[wasm_bindgen(js_name = "parseDippin")]
+pub fn parse_dippin_wasm(source: &str) -> Result<JsValue, JsValue> {
+    let conv = dippin_parser::parse_to_dot_with_map(source, "input.dip").map_err(|e| {
+        let first = e
+            .diagnostics()
+            .first()
+            .map(|d| {
+                format!(
+                    "{}:{}:{}: {}",
+                    d.location.file, d.location.line, d.location.column, d.message
+                )
+            })
+            .unwrap_or_else(|| "dippin parse failed".into());
+        JsValue::from_str(&first)
+    })?;
+    let js = JsDippinConversion {
+        dot_source: conv.dot_source,
+        source_map: conv
+            .source_map
+            .into_iter()
+            .map(|e| JsSourceMapEntry {
+                dot_start: e.dot_range.start as u32,
+                dot_end: e.dot_range.end as u32,
+                dip_start: e.dip_range.start as u32,
+                dip_end: e.dip_range.end as u32,
+            })
+            .collect(),
+    };
+    serde_wasm_bindgen::to_value(&js).map_err(|e| JsValue::from_str(&e.to_string()))
+}

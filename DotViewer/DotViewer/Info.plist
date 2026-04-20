@@ -35,6 +35,18 @@
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Dippin Workflow</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.2389.dot-viewer.dip</string>
+			</array>
+		</dict>
 	</array>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
@@ -69,6 +81,23 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>gv</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.2389.dot-viewer.dip</string>
+			<key>UTTypeDescription</key>
+			<string>Dippin Workflow</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>dip</string>
 				</array>
 			</dict>
 		</dict>

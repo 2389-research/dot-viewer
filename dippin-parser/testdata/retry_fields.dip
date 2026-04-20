@@ -1,0 +1,15 @@
+workflow RetryFields
+  goal: "Test retry-related node fields"
+  start: A
+  exit: A
+
+  agent A
+    retry_policy: aggressive
+    max_retries: 5
+    base_delay: 2s
+    retry_target: A
+    fallback_target: A
+    prompt: "Do it."
+
+  edges
+    A -> A
